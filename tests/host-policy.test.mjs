@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {assertHostStorage} from '../host-policy.mjs';
+const info={OSType:'linux',OperatingSystem:'Ubuntu 24.04',DockerRootDir:'/var/lib/docker',ID:'server-a'};
+const marker={platform:'linux',dockerRootDir:'/var/lib/docker',serverId:'server-a'};
+test('Windows continua exigindo confirmacao do disco D',()=>{assert.throws(()=>assertHostStorage({platform:'win32',info,linuxConfirmation:marker}),/disco virtual/);assert.doesNotThrow(()=>assertHostStorage({platform:'win32',info,windowsConfirmed:true}));});
+test('Linux rejeita marcador Windows e exige aprovacao do proprio host',()=>{assert.throws(()=>assertHostStorage({platform:'linux',info,windowsConfirmed:true}),/Confirme o armazenamento/);assert.doesNotThrow(()=>assertHostStorage({platform:'linux',info,linuxConfirmation:marker}));});
+test('confirmacao de outro servidor ou outra pasta nao e reutilizada',()=>{for(const patch of [{serverId:'server-b'},{dockerRootDir:'/outro/disco'},{platform:'win32'}])assert.throws(()=>assertHostStorage({platform:'linux',info,linuxConfirmation:{...marker,...patch}}),/Confirme o armazenamento/);});
+test('Linux Desktop e outros hosts nao sao aprovados pelo marcador nativo',()=>{assert.throws(()=>assertHostStorage({platform:'linux',info:{...info,OperatingSystem:'Docker Desktop'},linuxConfirmation:marker}),/nativo/);assert.throws(()=>assertHostStorage({platform:'darwin',info}),/Host nao homologado/);});
+test('imagem de dados raiz e Docker Windows sao rejeitados',()=>{assert.throws(()=>assertHostStorage({platform:'linux',info:{...info,DockerRootDir:'/'},linuxConfirmation:marker}),/Diretorio/);assert.throws(()=>assertHostStorage({platform:'win32',info:{OSType:'windows'},windowsConfirmed:true}),/containers Linux/);});

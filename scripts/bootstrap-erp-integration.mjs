@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawn} from 'node:child_process';
+import {tenantPath} from '../infra.mjs';
+import {atomicJSON} from '../integration.mjs';
+const id=process.argv[2]||'piloto',dir=tenantPath(id),t=JSON.parse(fs.readFileSync(path.join(dir,'tenant.json')));
+if(!t.local)throw Error('Restrito ao piloto local.');
+const code=`import os,json\nos.chdir('/home/frappe/frappe-bench/sites')\nimport frappe\nfrappe.init(site='frontend')\nfrappe.connect()\nfrappe.set_user('Administrator')\ncreated={}\nfor doctype,label,parent,root_name,leaf_name in [('Customer Group','customer_group_name','parent_customer_group','CloudWorld - Grupos','CloudWorld - Clientes'),('Territory','territory_name','parent_territory','CloudWorld - Territorios','CloudWorld - Geral')]:\n leaves=frappe.get_all(doctype,filters={'is_group':0},pluck='name',limit=1)\n if leaves:\n  created[doctype]=leaves[0]\n  continue\n roots=frappe.get_all(doctype,filters={'is_group':1},pluck='name',limit=1)\n if roots:\n  root=roots[0]\n else:\n  doc=frappe.get_doc({'doctype':doctype,label:root_name,'is_group':1})\n  doc.insert(ignore_permissions=True)\n  root=doc.name\n doc=frappe.get_doc({'doctype':doctype,label:leaf_name,parent:root,'is_group':0})\n doc.insert(ignore_permissions=True)\n created[doctype]=doc.name\nfrappe.db.commit()\nprint('CWJSON:'+json.dumps(created))\nfrappe.destroy()\n`;
+const output=await new Promise((resolve,reject)=>{const p=spawn('docker',['exec','-i',t.project+'-erp-backend-1','/home/frappe/frappe-bench/env/bin/python','-'],{windowsHide:true,stdio:['pipe','pipe','pipe']});let out='',err='';p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>err+=d);p.on('error',reject);p.on('close',c=>c===0?resolve(out):reject(Error('Bootstrap ERP falhou: '+err.slice(-800))));p.stdin.end(code);});
+const line=output.split('\n').find(l=>l.startsWith('CWJSON:'));if(!line)throw Error('Resposta administrativa inesperada');
+atomicJSON(path.join(dir,'erp-integration-defaults.json'),{at:new Date().toISOString(),...JSON.parse(line.slice(7)),scope:'Grupos e territorios genericos; sem empresa fiscal, moeda ou contas contabeis'});
+console.log('Grupo de clientes e territorio preparados para a integracao.');

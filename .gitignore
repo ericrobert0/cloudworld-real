@@ -1,0 +1,7 @@
+runtime/
+reports/private/
+*.env
+node_modules/
+.npm-cache/
+releases/
+*.log

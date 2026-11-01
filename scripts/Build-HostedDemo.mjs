@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+const root=new URL('../',import.meta.url),read=p=>fs.readFileSync(new URL(p,root),'utf8');
+const dir=new URL('sites/cloudworld-demo/dist/',root);fs.mkdirSync(dir,{recursive:true});
+const styles=['public/vendor/bootstrap.min.css','public/portal.css','presentation/presentation.css','presentation/blue.css'].map(read).join('\n');
+const store=read('presentation/demo-store.js');
+const js=store+'\n'+read('presentation/admin.js');new vm.Script(js);
+const admin=read('presentation/admin.html').replace('/* STYLES */',()=>styles).replace('/* ADMIN_JS */',()=>js);
+const clientJs=store+'\n'+read('presentation/client.js');new vm.Script(clientJs);
+const client=read('presentation/client.html').replace('/* STYLES */',()=>styles).replace('/* CLIENT_JS */',()=>clientJs);
+const presentation=read('presentation/CloudWorld-Apresentacao.html').replace('</style>',()=>read('presentation/blue.css')+'</style>').replace('<header class="topbar">','<header class="topbar"><a href="./">← Escolher painel</a>');
+const hub=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudWorld · Escolha seu painel</title><style>${styles}.hub{max-width:1050px;margin:auto;padding:65px 25px}.hub .brand{color:var(--deep);margin-bottom:65px}.hub h1{font-size:clamp(36px,5vw,60px);max-width:700px}.hub article{padding:32px}.hub .btn{margin-top:20px}.hub small{display:block;margin-bottom:16px}.hub footer{margin-top:45px}</style></head><body><main class="hub"><a class="brand" href="./"><span class="brand-mark">CW</span>CloudWorld</a><span class="eyebrow">UMA PLATAFORMA · DUAS EXPERIÊNCIAS</span><h1>Conheça os dois lados da CloudWorld.</h1><p>Escolha o painel que você quer apresentar. Você pode trocar a qualquer momento.</p><div class="demo-columns mt-4"><article class="info-card"><small>PARA QUEM OPERA A PLATAFORMA</small><h2>Painel administrativo</h2><p>Visão geral, empresas, cadastro, operações, integrações e infraestrutura.</p><a class="btn btn-primary" href="admin.html">Entrar na demonstração administrativa →</a></article><article class="info-card"><small>PARA QUEM USA O SERVIÇO</small><h2>Portal do cliente</h2><p>O espaço da empresa, ferramentas da rotina e um fluxo demonstrativo de atendimento.</p><a class="btn btn-outline-primary" href="cliente.html#demo">Entrar na demonstração do cliente →</a></article></div><div class="demo-info mt-4">Apresentação pública com dados fictícios. Nenhum dos painéis acessa o ambiente real. Cadastro, suspensão, backups e integrações são apenas simulações, reiniciadas ao recarregar a página. Não informe dados pessoais.</div><a href="cliente.html#overview">Conhecer a proposta da plataforma ↗</a><footer>CloudWorld · Demonstração interativa</footer></main></body></html>`;
+const updatedHub=hub.replace('fluxo demonstrativo de atendimento','cadastro de contatos, tarefas e rascunhos').replace('Cadastro, suspensão, backups e integrações são apenas simulações, reiniciadas ao recarregar a página.','Cadastros, tarefas e rascunhos ficam salvos somente neste navegador e podem ser exportados. Não é um serviço multiusuário nem executa as ferramentas externas.').replace('cliente.html#overview','apresentacao.html#overview');
+for(const [name,html] of [['index.html',updatedHub],['admin.html',admin],['cliente.html',client],['apresentacao.html',presentation]]){
+  if(/\bfetch\s*\(|XMLHttpRequest|<script[^>]+src=|<link[^>]+href=/.test(html))throw Error('Unexpected external dependency in '+name);
+  fs.writeFileSync(new URL(name,dir),html);
+}
+console.log('Demonstração estática gerada: escolha de painéis, administração e portal do cliente.');

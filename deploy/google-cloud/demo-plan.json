@@ -1,0 +1,29 @@
+{
+  "status": "draft-not-deployed",
+  "purpose": "CloudWorld demonstration with fictional company data",
+  "billingPolicy": "Free Trial only; no paid-account upgrade authorized",
+  "projectId": null,
+  "candidate": {
+    "architecture": "amd64",
+    "machineType": "e2-standard-4",
+    "vcpus": 4,
+    "memoryGiB": 16,
+    "region": "us-central1",
+    "zone": null,
+    "os": "Ubuntu 24.04 LTS amd64",
+    "bootDiskGiB": 80,
+    "bootDiskType": "pd-standard",
+    "replicas": 1,
+    "spot": false
+  },
+  "publicAccess": "Not configured. HTTPS and authentication required before exposing applications; databases and operator panel remain private.",
+  "dataPolicy": "New demo credentials and fictional data only; do not upload local runtime or backups.",
+  "beforeProvisioning": [
+    "Verify account is still Free Trial, actual remaining credit and expiry",
+    "Confirm project ownership, region, zone, quotas and service availability",
+    "Review full cost including VM, disk, IP and outbound traffic against remaining credit",
+    "Set budget notifications; notifications do not enforce a spending cap",
+    "Define demonstration schedule and shutdown policy; stopped disks and reserved IPs can still incur usage",
+    "Confirm Linux deployment settings, domain/TLS and restricted administrative access"
+  ]
+}

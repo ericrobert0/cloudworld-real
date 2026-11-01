@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {ROOT,RUNTIME} from '../infra.mjs';
+import {atomicJSON} from '../integration.mjs';
+const exec=promisify(execFile),run=async args=>(await exec('docker',args,{windowsHide:true,timeout:20000,maxBuffer:1048576})).stdout;
+const info=JSON.parse(await run(['info','--format','{{json .}}']));
+const rows=(await run(['stats','--no-stream','--format','{{json .}}'])).trim().split('\n').filter(Boolean).map(s=>JSON.parse(s));
+const report={at:new Date().toISOString(),host:{platform:os.platform(),cpus:os.cpus().length,memoryBytes:os.totalmem(),freeMemoryBytes:os.freemem()},docker:{cpus:info.NCPU,memoryBytes:info.MemTotal,os:info.OSType},services:rows.filter(r=>r.Name.startsWith('vw-')&&!r.Name.startsWith('vw-restore-')).map(r=>({name:r.Name,cpu:r.CPUPerc,memory:r.MemUsage,pids:r.PIDs,blockIO:r.BlockIO})),scope:'Fotografia do consumo atual; NAO e teste de carga, pico ou limite de clientes homologado'};
+atomicJSON(path.join(RUNTIME,'reports','capacity-snapshot.json'),report);console.log('Consumo atual registrado para '+report.services.length+' servicos. Nao define capacidade comercial.');

@@ -1,0 +1,19 @@
+# This supplements the application gateway; it does not replace tenant routes.
+# Required: CW_PORTAL_DOMAIN and portal service CW_PORTAL_ORIGIN=https://that-domain.
+{$CW_PORTAL_DOMAIN} {
+    encode zstd gzip
+    header X-Content-Type-Options nosniff
+    header Referrer-Policy no-referrer
+    @integration {
+        path /api/v1/tenants/*
+        header Authorization "Bearer *"
+    }
+    handle @integration {
+        reverse_proxy 127.0.0.1:8099 {
+            header_up Host 127.0.0.1:8099
+        }
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8100
+    }
+}

@@ -1,0 +1,14 @@
+[Unit]
+Description=CloudWorld verified daily backups
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+User=cloudworld
+Group=cloudworld
+WorkingDirectory=/opt/cloudworld
+ExecStart=/usr/bin/node /opt/cloudworld/scripts/Run-Backups.mjs
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=6h

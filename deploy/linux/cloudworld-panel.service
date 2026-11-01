@@ -1,0 +1,17 @@
+[Unit]
+Description=CloudWorld administrative control (private loopback)
+After=docker.service network-online.target
+Requires=docker.service
+[Service]
+Type=simple
+User=cloudworld
+Group=cloudworld
+WorkingDirectory=/opt/cloudworld
+ExecStart=/usr/bin/node /opt/cloudworld/panel.mjs
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target

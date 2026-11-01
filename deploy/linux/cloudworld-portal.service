@@ -1,0 +1,17 @@
+[Unit]
+Description=CloudWorld customer portal
+After=network-online.target
+[Service]
+Type=simple
+User=cloudworld
+Group=cloudworld
+WorkingDirectory=/opt/cloudworld
+EnvironmentFile=/etc/cloudworld/portal.env
+ExecStart=/usr/bin/node /opt/cloudworld/portal.mjs
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target

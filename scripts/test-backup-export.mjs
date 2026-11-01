@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {RUNTIME,tenantPath} from '../infra.mjs';
+import {latestBackup} from '../operations.mjs';
+import {atomicJSON} from '../integration.mjs';
+import {exportBackup,importBackup,loadBackupKey} from '../backup-store.mjs';
+const id=process.argv[2]||'piloto';tenantPath(id);const source=latestBackup(id);if(!source)throw Error('Nenhum backup completo');
+const base=path.join(RUNTIME,'backup-export-tests',id+'-'+Date.now()),key=loadBackupKey(path.join(RUNTIME,'backup-key.private.txt'));
+const exported=await exportBackup(source.dir,path.join(base,'encrypted'),key),restored=await importBackup(path.join(base,'encrypted'),path.join(base,'decrypted'),key);
+atomicJSON(path.join(base,'result.json'),{at:new Date().toISOString(),ok:exported.ok&&restored.ok,files:exported.files,source:source.dir,scope:'Roundtrip local de todos os arquivos; NAO e copia externa'});console.log('Exportacao criptografada e recuperacao integral verificadas em pasta local de teste.');
