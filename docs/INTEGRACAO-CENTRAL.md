@@ -13,7 +13,9 @@ Os nomes internos `D:\VlanWorld`, `vw-*` e a tarefa Windows permanecem para pres
 5. Consulte as entregas. Falhas temporarias recebem ate cinco tentativas com espera crescente. Falhas permanentes exigem revisao e reenvio manual.
 
 **Monitoramento** separa respostas HTTP, alvos de rede, autenticacao das APIs e estados dos containers. O ciclo aguarda 15 segundos entre verificacoes; uma rodada pode durar mais conforme numero de clientes e timeouts.
-Estagios Docker/OCI: created, starting (healthcheck), running, restarting, paused, removing, stopped ou failed. O estado stopping exige observacao de eventos do runtime; nao e inferido como se fosse um estado persistente. OCI aqui significa containers Open Container Initiative, nao uma integracao com Oracle Cloud.
+Estagios Docker/OCI: created, starting (healthcheck), running, restarting, paused, removing, stopped ou failed. O estado stopping agora e derivado de eventos reais de encerramento do runtime e aparece como Parando. A transicao expira em 120 segundos ou e removida quando a parada/inicializacao e confirmada; uma desconexao da coleta tambem invalida essa transicao. O historico mantem no maximo 100 eventos nesta sessao, sem labels arbitrarios ou segredos. A separacao usa o projeto Compose exato, inclusive para empresas com nomes parecidos. OCI aqui significa containers Open Container Initiative, nao uma integracao com Oracle Cloud.
+
+O painel usa um unico leitor de eventos com limite de entrada e reconexao com espera progressiva. Isso reconecta a observacao, sem reiniciar o daemon Docker. Consulte [eventos do Docker](https://docs.docker.com/reference/cli/docker/system/events/). O ensaio `node scripts/Test-DockerLifecycle.mjs` usa um container descartavel de 32 MB, sem rede, volumes ou privilegios; a execucao real precisa de Docker disponivel. No Codespaces, `node scripts/Configure-CodespacesMonitoring.mjs apresentacao` configura PING local, DNS e TCP dos paineis e testa ARP do gateway sem inventar equipamentos SNMP externos.
 
 ## API v1
 
