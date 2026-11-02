@@ -1,4 +1,6 @@
-# CloudWorld — infraestrutura local por cliente
+# CloudWorld — plataforma de serviços por empresa
+
+**Apresentação remota real:** foi instalado um ambiente no GitHub Codespaces com Authentik, Chatwoot, ERPNext, Nextcloud, Postiz e n8n. Foram aprovados 53 testes de código, 44 verificações de aplicações/bancos, 6 do portal e 17 da integração real. O portal já abriu pelo HTTPS do GitHub; o encaminhamento permanece privado. Consulte [implantação no Codespaces](deploy/codespaces/README.md). É um ambiente de apresentação sujeito à franquia e à suspensão por inatividade, com uma empresa; não equivale a hospedagem comercial permanente.
 
 **Login central:** o portal suporta Authentik/OIDC com PKCE, vínculo explícito de empresa/usuário e validação assinada. O acesso local permanece disponível na transição. Veja [SSO e laboratório de isolamento](docs/SSO-E-ISOLAMENTO.md) para o escopo exato e as limitações; isso não configura SSO automaticamente nas demais aplicações.
 

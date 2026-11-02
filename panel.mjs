@@ -9,9 +9,15 @@ import {createControlAPI} from './api.mjs';
 import {loadJobHistory,saveJobHistory} from './operations.mjs';
 fs.mkdirSync(RUNTIME,{recursive:true});
 const keyPath=path.join(RUNTIME,'panel-password.txt');
-if(!fs.existsSync(keyPath))fs.writeFileSync(keyPath,secret());
+if(!fs.existsSync(keyPath))fs.writeFileSync(keyPath,secret(),{mode:0o600});
+if(process.platform!=='win32')fs.chmodSync(keyPath,0o600);
 const password=fs.readFileSync(keyPath,'utf8').trim();
-const port=Number(process.env.VW_PANEL_PORT||8099),origin=`http://127.0.0.1:${port}`;
+const port=Number(process.env.VW_PANEL_PORT||8099),origin=process.env.CW_PANEL_ORIGIN||`http://127.0.0.1:${port}`;
+const panelOrigin=new URL(origin);
+if(panelOrigin.origin!==origin||!['http:','https:'].includes(panelOrigin.protocol)||panelOrigin.username||panelOrigin.password)throw Error('Informe somente a origem HTTP/HTTPS do painel.');
+if(process.env.CW_PANEL_ORIGIN&&panelOrigin.protocol!=='https:')throw Error('Origem externa do painel exige HTTPS.');
+const proxyHost=process.env.CW_PANEL_PROXY_HOST||null;
+if(proxyHost&&(panelOrigin.protocol!=='https:'||proxyHost!==`localhost:${port}`))throw Error('Alias do proxy deve corresponder a porta local e exigir HTTPS.');
 let busy=false;const jobs=loadJobHistory();let engine={at:null,containers:[],error:'Aguardando consulta Docker'};
 function refreshEngine(){
   const p=spawn('docker',['ps','-a','--format','{{json .}}'],{windowsHide:true});let out='',err='';
@@ -31,7 +37,8 @@ const server=http.createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');
   // Validar Host tambem bloqueia DNS rebinding contra o painel local.
   const dockerCallback=req.headers.host===`host.docker.internal:${port}`&&/^\/api\/v1\/tenants\//.test(req.url)&&/^Bearer /.test(req.headers.authorization||'');
-  if(req.headers.host!==`127.0.0.1:${port}`&&!dockerCallback){res.writeHead(403);res.end('Host invalido');return;}
+  const fromLoopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+  if(![`127.0.0.1:${port}`,panelOrigin.host].includes(req.headers.host)&&!(proxyHost&&fromLoopback&&req.headers.host===proxyHost)&&!dockerCallback){res.writeHead(403);res.end('Host invalido');return;}
   if(await control.handle(req,res,authorized(req)))return;
   if(!authorized(req)){res.writeHead(401,{'WWW-Authenticate':'Basic realm="CloudWorld", charset="UTF-8"'});res.end('Autenticacao necessaria');return;}
   if(req.method==='GET'&&staticAssets[req.url]){const [file,type]=staticAssets[req.url];res.setHeader('Content-Type',type);res.end(fs.readFileSync(path.join(ROOT,'public',file)));return;}

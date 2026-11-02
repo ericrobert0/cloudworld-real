@@ -49,3 +49,23 @@ test('portal limita verificacoes de senha simultaneas para conter consumo de mem
   const results=await Promise.allSettled(Array.from({length:10},()=>a.login('alpha',u.username,u.initialPassword)));
   assert.equal(results.filter(r=>r.status==='fulfilled').length,4);assert.ok(results.filter(r=>r.status==='rejected').every(r=>r.reason.status===429));assert.equal(a.activeLogins,0);
 });
+
+test('proxy local explicito preserva HTTPS e CSRF sem confiar em X-Forwarded-Host',async()=>{
+  const origin='https://clientes.example.com',port=18203;
+  assert.throws(()=>createPortal({origin,proxyHost:'attacker.invalid:8100'}),/Alias/);
+  assert.throws(()=>createPortal({origin:'http://127.0.0.1:8100',proxyHost:'localhost:8100'}),/Alias/);
+  const accounts=new PortalAccounts(),user=await accounts.save('alpha',{username:'proxyclient',name:'Proxy'}),{server}=createPortal({accounts,origin,proxyHost:`localhost:${port}`});
+  await new Promise(resolve=>server.listen(port,'127.0.0.1',resolve));
+  const request=(route,headers={},body)=>new Promise((resolve,reject)=>{
+    const q=http.request({hostname:'127.0.0.1',port,path:route,method:body?'POST':'GET',headers:{Host:`localhost:${port}`,...headers}},r=>{r.resume();r.on('end',()=>resolve({status:r.statusCode,headers:r.headers}));});q.on('error',reject);q.end(body);
+  });
+  try{
+    assert.equal((await request('/')).status,200);
+    assert.equal((await request('/api/me')).status,401);
+    assert.equal((await request('/',{Host:'attacker.invalid','X-Forwarded-Host':'clientes.example.com'})).status,403);
+    const body=JSON.stringify({tenant:'alpha',username:user.username,password:user.initialPassword}),headers={'Content-Type':'application/json'};
+    assert.equal((await request('/api/login',{...headers,Origin:'https://attacker.invalid'},body)).status,403);
+    const login=await request('/api/login',{...headers,Origin:origin},body);
+    assert.equal(login.status,200);assert.match(login.headers['set-cookie'][0],/; Secure/);
+  }finally{await new Promise(resolve=>server.close(resolve));}
+});

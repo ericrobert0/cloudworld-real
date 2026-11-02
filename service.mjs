@@ -5,7 +5,7 @@ export const catalog={
   version:'2026-10-31.4',name:'CloudWorld — Microempresa',plan:'microempresa-padrao',
   applications:['auth','chat','n8n','postiz','cloud','erp'],
   delivery:'Um projeto isolado por empresa, com o mesmo conjunto de ferramentas e limites por servico.',
-  availability:'Piloto local; capacidade e disponibilidade comercial ainda nao homologadas.',
+  availability:process.env.CODESPACES==='true'?'Apresentacao remota real; disponibilidade comercial ainda nao homologada.':'Piloto local; capacidade e disponibilidade comercial ainda nao homologadas.',
   integrations:{api:'API v1 por empresa, chaves com escopos e fila persistente de eventos.',flows:'Captura opcional de contatos Chatwoot para ERPNext/n8n; requer configurar e validar credenciais.',whatsapp:'Exige pareamento/licenca da integracao ou Cloud API',sso:'Conforme suporte e edicao de cada produto'},
   licensing:{n8n:'Validar acordo comercial antes de cobrar acesso hospedado.',waha:'Core incluido; Apps/Plus dependem de licenca propria.'}
 };
@@ -65,6 +65,7 @@ export function adopt(id){
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===path.join(ROOT,'service.mjs')){
   try{
+    if(process.env.CODESPACES==='true'&&process.argv[2]==='onboard')throw Error('Este Codespace suporta uma empresa de apresentacao. Novos clientes exigem outro ambiente dimensionado.');
     if(process.argv[2]==='onboard')console.log(JSON.stringify(onboard(process.argv[3],process.argv[4]||''),null,2));
     else if(process.argv[2]==='edge')console.log(writeGateway());
     else if(process.argv[2]==='catalog')console.log(JSON.stringify(catalog,null,2));

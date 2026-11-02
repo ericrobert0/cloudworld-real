@@ -5,6 +5,15 @@ import {pipeline} from 'node:stream/promises';
 import {ROOT,RUNTIME,tenantPath,createTenant,writeJSON} from './infra.mjs';
 import {assertHostStorage} from './host-policy.mjs';
 
+function checkStorage(info){
+  const marker=name=>{const p=path.join(RUNTIME,name);return fs.existsSync(p)?JSON.parse(fs.readFileSync(p)):null;};
+  assertHostStorage({platform:process.platform,info,windowsConfirmed:fs.existsSync(path.join(RUNTIME,'docker-storage-confirmed.json')),linuxConfirmation:marker('linux-storage-confirmed.json'),codespaceName:process.env.CODESPACES==='true'?process.env.CODESPACE_NAME:null,codespacesConfirmation:marker('codespaces-storage-confirmed.json')});
+  if(process.env.CODESPACES==='true'){
+    const disk=fs.statfsSync(info.DockerRootDir,{bigint:true});
+    if(Number(disk.bavail*disk.bsize)/1024**3<3)throw Error('Codespace com menos de 3 GiB livres; operacao interrompida para preservar os dados.');
+  }
+}
+
 function run(args,{capture=false,output,input}={}) {
   return new Promise((resolve,reject)=>{
     const p=spawn('docker',args,{windowsHide:true,stdio:[input?'pipe':'ignore',capture||output?'pipe':'inherit','pipe']});
@@ -21,6 +30,7 @@ function run(args,{capture=false,output,input}={}) {
 export async function main(args=process.argv.slice(2)) {
   const [action,id,...rest]=args;
   if(action==='create') {
+    if(process.env.CODESPACES==='true')throw Error('Este Codespace suporta uma empresa de apresentacao. Novos clientes exigem outro ambiente dimensionado.');
     const domain=rest[0]||`${id}.localhost`,port=Number(rest[1]||8443);
     for(const d of fs.readdirSync(path.join(RUNTIME,'tenants'),{withFileTypes:true}).filter(d=>d.isDirectory())) {
       const p=path.join(RUNTIME,'tenants',d.name,'tenant.json');if(!fs.existsSync(p))continue;
@@ -43,9 +53,21 @@ export async function main(args=process.argv.slice(2)) {
   try {
     if(action==='up'||action==='resume') {
       const info=JSON.parse(await run(['info','--format','{{json .}}'],{capture:true}));
-      assertHostStorage({platform:process.platform,info,windowsConfirmed:fs.existsSync(path.join(RUNTIME,'docker-storage-confirmed.json')),linuxConfirmation:fs.existsSync(path.join(RUNTIME,'linux-storage-confirmed.json'))?JSON.parse(fs.readFileSync(path.join(RUNTIME,'linux-storage-confirmed.json'))):null});
+      checkStorage(info);
       if(action==='up') {
-        await dc('config','--quiet');await dc('pull');
+        await dc('config','--quiet');
+        if(process.env.CODESPACES==='true'){
+          // Pull once per image, sequentially; avoid parallel extraction peaks.
+          const refs=[...new Set(Object.values(c.services).filter(s=>!s.profiles?.length).map(s=>s.image))];
+          const cost=ref=>ref.includes('postiz-app')?7:ref.includes('erpnext')?4.5:ref.includes('chatwoot')?2.8:ref.includes('nextcloud')?2.1:ref.includes('goauthentik')?2:ref.includes('n8n')?1.9:0.8;
+          for(const ref of refs.sort((a,b)=>cost(b)-cost(a))){
+            const installed=await run(['image','ls','--quiet',ref],{capture:true});
+            if(installed)continue;
+            const disk=fs.statfsSync(info.DockerRootDir,{bigint:true});
+            if(Number(disk.bavail*disk.bsize)/1024**3<cost(ref)*1.5+3)throw Error('Espaco insuficiente para baixar a proxima imagem com margem. Nenhum volume foi removido.');
+            await run(['pull',ref]);
+          }
+        }else await dc('pull');
         if(!fs.existsSync(path.join(dir,'images.lock.json'))) {
           const requested=JSON.parse(fs.readFileSync(path.join(dir,'images.requested.json')));
           for(const [name,ref] of Object.entries(requested)) {
@@ -70,7 +92,8 @@ export async function main(args=process.argv.slice(2)) {
       await backup(t,c,dir,dc);
     } else if(action==='update') {
       const info=JSON.parse(await run(['info','--format','{{json .}}'],{capture:true}));
-      assertHostStorage({platform:process.platform,info,windowsConfirmed:fs.existsSync(path.join(RUNTIME,'docker-storage-confirmed.json')),linuxConfirmation:fs.existsSync(path.join(RUNTIME,'linux-storage-confirmed.json'))?JSON.parse(fs.readFileSync(path.join(RUNTIME,'linux-storage-confirmed.json'))):null});
+      checkStorage(info);
+      if(process.env.CODESPACES==='true')throw Error('Atualizacao neste Codespace exige revisar espaco para backup e coexistencia das imagens antes de continuar.');
       const [service,image]=rest;
       const requestedPath=path.join(dir,'images.requested.json'),requested=JSON.parse(fs.readFileSync(requestedPath));
       if(!requested[service]||service.endsWith('-db')||service.includes('redis')||service==='wireguard')throw Error('Escolha um servico de aplicacao; bancos/VPN exigem migracao propria.');
@@ -93,8 +116,8 @@ export async function main(args=process.argv.slice(2)) {
     } else if(action==='chat-admin') {
       const mail=rest[0]; if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail??''))throw Error('Informe email valido.');
       // Senha gerada em arquivo privado; nao e registrada no console.
-      const {secret}=await import('./infra.mjs'); const password=secret();
-      const ruby="abort('Usuario existente') if User.exists?(email: ENV.fetch('ADMIN_EMAIL')); a=Account.create!(name: ENV.fetch('ACCOUNT_NAME')); u=User.new(name:'Administrador',email:ENV.fetch('ADMIN_EMAIL'),password:ENV.fetch('ADMIN_PASSWORD'),password_confirmation:ENV.fetch('ADMIN_PASSWORD')); u.skip_confirmation!; u.save!; AccountUser.create!(account:a,user:u,role: :administrator)";
+      const {secret}=await import('./infra.mjs'); const password='Aa1!'+secret().slice(0,48);
+      const ruby="abort('Usuario existente') if User.exists?(email: ENV.fetch('ADMIN_EMAIL')); ActiveRecord::Base.transaction do; a=Account.find_by(name:ENV.fetch('ACCOUNT_NAME')) || Account.create!(name:ENV.fetch('ACCOUNT_NAME')); u=User.new(name:'Administrador',email:ENV.fetch('ADMIN_EMAIL'),password:ENV.fetch('ADMIN_PASSWORD'),password_confirmation:ENV.fetch('ADMIN_PASSWORD')); u.skip_confirmation!; u.save!; AccountUser.create!(account:a,user:u,role: :administrator); end";
       await dc('exec','-T','-e',`ADMIN_EMAIL=${mail}`,'-e',`ADMIN_PASSWORD=${password}`,'-e',`ACCOUNT_NAME=${id}`,'chat','bundle','exec','rails','runner',ruby);
       writeJSON(path.join(dir,'chat-admin.private.json'),{email:mail,password});console.log('Conta criada; credenciais no arquivo privado do cliente.');
     } else throw Error('Acoes: create, list, validate, up, status, suspend, resume, backup, smoke, chat-admin.');
@@ -136,12 +159,12 @@ async function smoke(t,c,dir) {
   const dcArgs=['compose','--project-directory',dir,'-f',path.join(dir,'compose.json')];
   for(const [name,s] of Object.entries(c.services).filter(([n,s])=>n.endsWith('-db')&&s.environment?.POSTGRES_DB))await check(`${name}: SQL`,()=>run([...dcArgs,'exec','-T',name,'sh','-ec','psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "SELECT 1"']));
   for(const [name,s] of Object.entries(c.services).filter(([n,s])=>n.endsWith('-db')&&s.environment?.MARIADB_ROOT_PASSWORD))await check(`${name}: SQL`,()=>run([...dcArgs,'exec','-T',name,'sh','-ec','mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "SELECT 1"']));
-  for(const [app,url] of Object.entries(t.urls))await check(`${app}: HTTPS`,async()=>{
+  for(const [app,url] of Object.entries(t.apiUrls||t.urls))await check(`${app}: ${t.apiUrls?'gateway interno':'HTTPS'}`,async()=>{
     const target=app==='mixpost'?`${url}/mixpost/login`:app==='postiz'?`${url}/api/auth/can-register`:url;
     // curl preserva Host/SNI. -k somente para CA local gerada pelo Caddy.
     const endpoint=new URL(url);
-    const args=['--silent','--show-error','--max-time','45','--output','NUL','--write-out','%{http_code}',...(t.local?['--insecure','--resolve',`${endpoint.hostname}:${endpoint.port||443}:127.0.0.1`]:[]),target];
-    const code=await new Promise((resolve,reject)=>{const p=spawn('curl.exe',args,{windowsHide:true});let out='';p.stdout.on('data',d=>out+=d);p.on('error',reject);p.on('exit',n=>n===0?resolve(Number(out)):reject(Error(`curl falhou: ${n}`)));});
+    const args=['--silent','--show-error','--max-time','45','--output',process.platform==='win32'?'NUL':'/dev/null','--write-out','%{http_code}',...(t.local?['--insecure','--resolve',`${endpoint.hostname}:${endpoint.port||443}:127.0.0.1`]:[]),target];
+    const code=await new Promise((resolve,reject)=>{const p=spawn(process.platform==='win32'?'curl.exe':'curl',args,{windowsHide:true});let out='';p.stdout.on('data',d=>out+=d);p.on('error',reject);p.on('exit',n=>n===0?resolve(Number(out)):reject(Error(`curl falhou: ${n}`)));});
     if(code<200||code>=400)throw Error(`HTTP ${code}`);
   });
   const ps=await run([...dcArgs,'ps','--all','--format','json'],{capture:true});

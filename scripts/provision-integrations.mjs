@@ -4,8 +4,9 @@ import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {IntegrationHub,atomicJSON} from '../integration.mjs';
 import {tenantPath,secret} from '../infra.mjs';
+import {assertPresentationTenant} from '../codespaces.mjs';
 const id=process.argv[2]||'piloto',dir=tenantPath(id),tenant=JSON.parse(fs.readFileSync(path.join(dir,'tenant.json'))),hub=new IntegrationHub();
-if(!tenant.local)throw Error('Provisionamento automatico restrito ao piloto local.');
+assertPresentationTenant(tenant);
 const container=name=>tenant.project+'-'+name+'-1';
 function run(args,input){return new Promise((resolve,reject)=>{
   const p=spawn('docker',args,{windowsHide:true,stdio:['pipe','pipe','pipe']});let out='',err='';const timer=setTimeout(()=>p.kill(),120000);
@@ -19,7 +20,8 @@ async function stage(app,fn){try{
   if(!hub.publicSettings(id).connectors[app].configured||(app==='cloud'&&process.argv.includes('--repair-cloud-user')))hub.configure(id,{connectors:{[app]:{enabled:true,...await fn()}}});
   const result=await hub.invoke(id,app,'check');checks.push({app,ok:true,authentication:result.authentication});console.log(app+': conectado');
 }catch(e){if(e.privateOutput)fs.writeFileSync(path.join(dir,'integration-'+app+'-diagnostic.private.txt'),e.privateOutput,{mode:0o600});checks.push({app,ok:false,error:e.status?e.message:e.message});console.log(app+': pendente (sem alterar demais conexoes)');}}
-await stage('waha',async()=>({token:JSON.parse(fs.readFileSync(path.join(dir,'secrets.json'))).waha}));
+if(tenant.deferredServices?.waha)console.log('waha: adiado, sem numero conectado');
+else await stage('waha',async()=>({token:JSON.parse(fs.readFileSync(path.join(dir,'secrets.json'))).waha}));
 await stage('auth',async()=>{
   const code=`import json\nfrom authentik.core.models import User, Token, TokenIntents\nfrom authentik.rbac.models import Role\nu,created=User.objects.get_or_create(username='cloudworld-integration',defaults={'name':'CloudWorld Integration','type':'service_account','is_active':True})\nr,created=Role.objects.get_or_create(name='CloudWorld Integration Read Users')\nr.assign_perms('authentik_core.view_user')\nu.roles.add(r)\nt,created=Token.objects.get_or_create(identifier='cloudworld-integration',defaults={'user':u,'intent':TokenIntents.INTENT_API,'expiring':False,'description':'CloudWorld local API read-only users'})\nprint('CWJSON:'+json.dumps({'token':t.key}))\n`;
   return marked(await exec('auth',['ak','shell','-c',code]));

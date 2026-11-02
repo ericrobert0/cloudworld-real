@@ -8,3 +8,10 @@ test('Linux rejeita marcador Windows e exige aprovacao do proprio host',()=>{ass
 test('confirmacao de outro servidor ou outra pasta nao e reutilizada',()=>{for(const patch of [{serverId:'server-b'},{dockerRootDir:'/outro/disco'},{platform:'win32'}])assert.throws(()=>assertHostStorage({platform:'linux',info,linuxConfirmation:{...marker,...patch}}),/Confirme o armazenamento/);});
 test('Linux Desktop e outros hosts nao sao aprovados pelo marcador nativo',()=>{assert.throws(()=>assertHostStorage({platform:'linux',info:{...info,OperatingSystem:'Docker Desktop'},linuxConfirmation:marker}),/nativo/);assert.throws(()=>assertHostStorage({platform:'darwin',info}),/Host nao homologado/);});
 test('imagem de dados raiz e Docker Windows sao rejeitados',()=>{assert.throws(()=>assertHostStorage({platform:'linux',info:{...info,DockerRootDir:'/'},linuxConfirmation:marker}),/Diretorio/);assert.throws(()=>assertHostStorage({platform:'win32',info:{OSType:'windows'},windowsConfirmed:true}),/containers Linux/);});
+
+test('Codespace exige marcador proprio, maquina correspondente e driver verificado',()=>{
+  const d={...info,Driver:'overlay2'},m={runtime:'codespaces',name:'codespace-a',serverId:d.ID,dockerRootDir:d.DockerRootDir};
+  const input={platform:'linux',info:d,codespaceName:'codespace-a',codespacesConfirmation:m};
+  assert.doesNotThrow(()=>assertHostStorage(input));
+  for(const patch of [{codespacesConfirmation:null},{codespaceName:'outro-codespace'},{info:{...d,ID:'outro-servidor'}},{info:{...d,Driver:'overlayfs'}},{codespacesConfirmation:marker}])assert.throws(()=>assertHostStorage({...input,...patch}),/deste Codespace/);
+});

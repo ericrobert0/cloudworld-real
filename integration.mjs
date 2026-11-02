@@ -92,7 +92,7 @@ export class IntegrationHub{
   async invoke(id,app,operation,payload={},eventId=''){
     if(!Object.hasOwn(operations,app)||!operations[app].includes(operation))throw error('Operacao nao suportada');
     const c=this.settings(id).connectors[app];if(!c?.enabled||!required[app].every(k=>!!c[k]))throw error('Conector nao configurado ou desativado',409);
-    const tenant=read(this.file(id,'tenant.json'));const base=app==='waha'?`http://127.0.0.1:${tenant.port+2}`:tenant.urls[app];
+    const tenant=read(this.file(id,'tenant.json'));const base=app==='waha'?`http://127.0.0.1:${tenant.port+2}`:tenant.apiUrls?.[app]||tenant.urls[app];
     const headers={'Content-Type':'application/json','X-CloudWorld-Event-Id':eventId};
     if(app==='auth')headers.Authorization='Bearer '+c.token;
     if(app==='chat')headers.api_access_token=c.token;

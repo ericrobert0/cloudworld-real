@@ -6,21 +6,23 @@ import {spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
 import {RUNTIME,tenantPath} from '../infra.mjs';
 import {IntegrationHub,requestApp,atomicJSON} from '../integration.mjs';
+import {assertPresentationTenant,codespacesIdentity} from '../codespaces.mjs';
 const id=process.argv[2]||'piloto',dir=tenantPath(id),t=JSON.parse(fs.readFileSync(path.join(dir,'tenant.json')));
-if(!t.local)throw Error('Teste de escrita restrito ao piloto local.');
+assertPresentationTenant(t);
 const origin='http://127.0.0.1:8099',base=origin+'/api/v1/tenants/'+id,auth='Basic '+Buffer.from('admin:'+fs.readFileSync(path.join(RUNTIME,'panel-password.txt'),'utf8').trim()).toString('base64'),checks=[];
+const requestOrigin=t.runtime==='codespaces'?codespacesIdentity().url(8099):origin;
 let key;
 let ready=false;
 for(let i=0;i<30;i++){try{const r=await fetch(origin,{signal:AbortSignal.timeout(2000)});if(r.status===401){ready=true;break;}}catch{}await delay(500);}
 if(!ready)throw Error('Painel nao iniciou; nenhum teste de escrita executado.');
 async function api(resource,method='GET',body,extra={}){
-  const r=await fetch(base+'/'+resource,{method,headers:{Authorization:auth,Origin:origin,'Content-Type':'application/json',...extra},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(60000)});
+  const r=await fetch(base+'/'+resource,{method,headers:{Authorization:auth,Origin:requestOrigin,'Content-Type':'application/json',...extra},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(60000)});
   const value=await r.json();if(!r.ok)throw Error(value.error||'HTTP '+r.status);return value;
 }
 async function check(name,fn){try{await fn();checks.push({name,ok:true});console.log(name+': OK');}catch(e){checks.push({name,ok:false,error:e.message});console.log(name+': FALHOU');}}
 try{
   await check('Painel CloudWorld publicado',async()=>{const r=await fetch(origin,{headers:{Authorization:auth}});assert.equal(r.status,200);const text=await r.text();assert.ok(text.includes('CloudWorld'));assert.ok(text.includes('toggle-contact-sync'));});
-  for(const app of ['auth','chat','erp','cloud','postiz','n8n','waha'])await check('API local '+app,async()=>{assert.equal((await api('connectors/'+app+'/check','POST',{})).ok,true);});
+  for(const app of ['auth','chat','erp','cloud','postiz','n8n',...(t.deferredServices?.waha?[]:['waha'])])await check('API interna '+app,async()=>{assert.equal((await api('connectors/'+app+'/check','POST',{})).ok,true);});
   await check('Criacao e isolamento de permissoes da chave',async()=>{
     key=await api('keys','POST',{name:'Teste temporario CloudWorld',scopes:['events:write','events:read']});
     const r=await fetch(base+'/integrations',{headers:{Authorization:'Bearer '+key.token}});assert.equal(r.status,403);
@@ -50,10 +52,10 @@ try{
     }throw Error('Entregas nao concluiram no prazo');
   });
   await check('ERP reconhece contato sem duplicar cliente',async()=>{assert.ok(contactId&&eventId);const r=await api('connectors/erp/customers.upsert','POST',{name,email,source:'chat',sourceId:String(contactId)});assert.equal(r.existing,true);});
-  await check('Webhook n8n rejeita credencial incorreta',async()=>{const h=new IntegrationHub(),c=h.settings(id).connectors.n8n;const r=await requestApp(new URL('/webhook/'+c.webhookPath,t.urls.n8n).href,{method:'POST',headers:{'X-CloudWorld-Key':'incorrect-test-token','Content-Type':'application/json'},body:{test:true}});assert.ok([401,403].includes(r.status));});
+  await check('Webhook n8n rejeita credencial incorreta',async()=>{const h=new IntegrationHub(),c=h.settings(id).connectors.n8n;const r=await requestApp(new URL('/webhook/'+c.webhookPath,t.apiUrls?.n8n||t.urls.n8n).href,{method:'POST',headers:{'X-CloudWorld-Key':'incorrect-test-token','Content-Type':'application/json'},body:{test:true}});assert.ok([401,403].includes(r.status));});
   await check('Webhook n8n validado por entrega real',async()=>{const r=await api('connectors/n8n/check','POST',{});assert.equal(r.authentication,'verified');});
 }finally{
   if(key)await check('Chave temporaria revogada',async()=>{await api('keys/'+key.id,'DELETE');assert.equal((await fetch(base+'/events',{headers:{Authorization:'Bearer '+key.token}})).status,401);});
-  atomicJSON(path.join(RUNTIME,'reports','platform-live-test.json'),{at:new Date().toISOString(),client:id,checks,scope:'Dados ficticios locais no Chatwoot, ERP, Nextcloud e n8n; sem envio WhatsApp ou publicacao em redes sociais.'});
+  atomicJSON(path.join(RUNTIME,'reports','platform-live-test.json'),{at:new Date().toISOString(),client:id,runtime:t.runtime||'local',checks,scope:'Dados de teste em aplicacoes reais Chatwoot, ERP, Nextcloud e n8n; sem envio WhatsApp ou publicacao em redes sociais.'});
 }
 if(checks.some(c=>!c.ok))process.exitCode=1;

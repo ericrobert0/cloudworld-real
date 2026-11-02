@@ -27,10 +27,13 @@ Se houver erro de rede depois de enviar o cadastro, confira o Chatwoot antes de 
 
 O usuário confirmou custo zero, ausência de cartão e necessidade de funcionar com o computador desligado. AWS/Google com requisitos de pagamento e o computador local como servidor não atendem a essas condições atualmente. Não foi criado nenhum recurso nesses provedores.
 
-GitHub Codespaces é apenas uma alternativa em avaliação para apresentações reais, não uma hospedagem comercial homologada: conta pessoal Free inclui 120 core-hours e 15 GB-month de armazenamento. Isso corresponde a até 60 horas em máquina de 2 núcleos ou 30 horas em 4 núcleos, antes de descontar outros usos. Sem forma de pagamento, o uso é bloqueado ao esgotar a cota. A quantidade de armazenamento deste conjunto de aplicações também precisa ser medida. O ambiente para por inatividade e pode ser excluído pela política de retenção. Não há garantia de que caiba na conta, quota ou máquina ainda não disponíveis.
+Foi instalado um ambiente real de apresentação no GitHub Codespaces, em repositório privado, com uma empresa e seis aplicações. Os 53 testes de código passaram na máquina remota. A redução da base de desenvolvimento e o armazenamento Docker overlay2 permitiram instalar o conjunto, deixando 9,3 GiB livres na medição após instalação. Contas novas e seis conectores foram configurados; o fluxo real Chatwoot → API/fila → ERPNext/n8n passou em 17 verificações; veja o estado e os comandos em `deploy/codespaces/README.md`.
+
+Isso não é hospedagem comercial homologada: a conta pessoal Free inclui 120 core-hours e 15 GB-month de armazenamento. Na máquina de 4 núcleos, são até 30 horas ativas por ciclo, antes dos demais usos. Sem forma de pagamento, o uso é bloqueado ao esgotar a cota. O armazenamento também consome a franquia enquanto parado. O ambiente para por inatividade e pode ser excluído pela política de retenção. WAHA depende de pareamento e nova avaliação de recursos; WireGuard exige outro ambiente com UDP. Não foi contratado plano pago.
 
 Fontes oficiais:
 
 - https://docs.github.com/en/billing/concepts/product-billing/github-codespaces
 - https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace
 - https://docs.github.com/en/codespaces/about-codespaces/understanding-the-codespace-lifecycle
+

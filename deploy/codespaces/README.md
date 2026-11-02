@@ -1,6 +1,12 @@
 # Codespaces — candidato para apresentação real sem cartão
 
-Estado: não implantado. Nenhum Codespace, repositório GitHub ou encaminhamento público de porta foi criado. É necessário login na conta pessoal do proprietário para conferir disponibilidade e quotas antes de criar recursos.
+Estado em 01/11/2026: fontes transferidos para o repositório privado `ericrobert0/cloudworld-real` e um Codespace criado. As dependências Node foram instaladas e os 53 testes passaram na máquina remota. A instalação Docker de Authentik, Chatwoot, ERPNext, Nextcloud, Postiz e n8n terminou com código zero. Contas novas e seis conectores foram configurados. A validação anterior aprovou 44 verificações de serviços, seis do portal e 17 do fluxo Chatwoot → API/fila → ERPNext/n8n. Nenhuma porta pública foi habilitada.
+
+A conta disponibilizou somente máquinas de 2 ou 4 núcleos, ambas com 32 GB de disco. A máquina selecionada tem 4 núcleos, 15,6 GiB de RAM utilizável e inicialmente 18,8 GiB livres. Docker e Compose funcionam, mas a checagem de armazenamento não passou. As 14 imagens únicas usadas pelo piloto local somam aproximadamente 25,2 GiB de tamanhos virtuais, antes de considerar compartilhamento de camadas, volumes e margem de operação. Essa soma não equivale a uma medição de ocupação remota, mas impede presumir que o pacote completo caiba.
+
+Foi adicionada uma configuração Dev Container com a imagem oficial Node 24 e Docker-in-Docker. Encaminhamento automático de portas desabilitado. A reconstrução sem cache, feita antes de existirem aplicações ou volumes, recuperou 27,7 GiB livres. O engine vazio foi configurado com overlay2. Depois da instalação das seis aplicações, a medição mostrou 9,3 GiB livres. Os bancos, redes e credenciais foram criados novos; os dados e senhas do piloto local não foram transportados.
+
+O adaptador limita este Codespace a uma empresa de apresentação e mantém os bancos privados. WAHA fica em perfil opcional, aguardando vínculo com um número e nova conferência de recursos. WireGuard depende de UDP, que não é disponibilizado pelo encaminhamento web do Codespaces; a administração usa a proteção privada do GitHub.
 
 ## Por que avaliar
 
@@ -18,10 +24,52 @@ O ambiente remoto pode executar Docker e encaminhar portas HTTPS do projeto. Ess
 6. Manter administração, Docker, bancos e WAHA privados. Revisar autenticação antes de publicar portas de aplicações. O encaminhamento público remove a barreira de acesso do GitHub, não substitui o login de cada aplicação.
 7. Validar as aplicações e as integrações no ambiente real remoto. Encerrar o Codespace fora das apresentações, acompanhar armazenamento e guardar cópia recuperável.
 
-A checagem de Codespaces não substitui a política de armazenamento de Linux. A adaptação para esse runtime não está implementada nem homologada nesta entrega. Primeiro precisamos observar a máquina realmente disponível na conta.
+A checagem de Codespaces não substitui a política de armazenamento de Linux nativo. Existe um marcador próprio vinculado ao nome do Codespace, identidade Docker e diretório de dados; a instalação ocorre em sequência e interrompe novos downloads quando não há margem de disco. Isso não aprova capacidade comercial.
+
+## Operação deste ambiente
+
+Preparação inicial, apenas em um Codespace novo:
+
+```sh
+npm test
+node scripts/Prepare-Codespaces.mjs apresentacao
+node manage.mjs validate apresentacao
+node manage.mjs up apresentacao
+```
+
+Não repetir a preparação para sobrescrever um cliente existente. Configurações e credenciais ficam em `runtime/`, fora do Git. Depois de instalar, não usar Full Rebuild sem backup recuperável: essa operação pode limpar os volumes Docker. A limpeza inicial foi realizada com o engine vazio.
+
+Ao abrir o ambiente com a configuração Dev Container aplicada, o postStart inicia os dois painéis e o callback privado. Para iniciar manualmente de forma idempotente:
+
+```sh
+node scripts/Start-CodespacesPanels.mjs
+```
+
+Preparar contas novas e integrações no ambiente de apresentação:
+
+```sh
+node scripts/Bootstrap-CodespacesAccounts.mjs apresentacao
+node scripts/bootstrap-erp-integration.mjs apresentacao
+node scripts/provision-integrations.mjs apresentacao
+```
+
+A publicação do workflow por CLI pede reiniciar somente o n8n antes do teste de entrega. Os arquivos `*-admin.private.json` e `portal-initial.private.json` contêm os acessos novos; não publicá-los nem incluí-los em commit. O bootstrap não redefine automaticamente contas existentes.
+
+Verificações reais:
+
+```sh
+node manage.mjs smoke apresentacao
+node scripts/Test-CodespacesPortal.mjs apresentacao
+node scripts/test-platform-live.mjs apresentacao
+```
+
+O último teste cria registros identificados como teste nas aplicações reais, verifica a entrega Chatwoot → API/fila → ERPNext/n8n e revoga a chave temporária. Não envia WhatsApp nem publica em redes sociais. Os testes internos não substituem a verificação separada do HTTPS encaminhado pelo GitHub.
+
+Portas: operação 8099, portal da empresa 8100, Authentik 18001, Chatwoot 18002, n8n 18003, Postiz 18004, Nextcloud 18005 e ERPNext 18006. Usar encaminhamento privado inicialmente. O endereço é `https://NOME-DO-CODESPACE-PORTA.app.github.dev`. Login próprio de cada aplicação permanece obrigatório; SSO nas demais ferramentas e contas sociais exigem configuração específica.
 
 ## Fontes
 
 - https://docs.github.com/en/billing/concepts/product-billing/github-codespaces
 - https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace
 - https://docs.github.com/en/codespaces/about-codespaces/understanding-the-codespace-lifecycle
+

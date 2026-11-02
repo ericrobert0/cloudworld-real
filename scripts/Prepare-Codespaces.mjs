@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {RUNTIME,writeJSON} from '../infra.mjs';
+import {codespacesIdentity,createCodespacesTenant} from '../codespaces.mjs';
+const remote=codespacesIdentity();
+const id=process.argv[2]||'apresentacao';
+const info=JSON.parse(execFileSync('docker',['info','--format','{{json .}}'],{encoding:'utf8',timeout:15000}));
+execFileSync('docker',['compose','version'],{stdio:'ignore'});
+if(info.OSType!=='linux'||info.Architecture!=='x86_64'||info.Driver!=='overlay2'||!info.ID||!info.DockerRootDir?.startsWith('/')||info.DockerRootDir==='/')throw Error('Necessario Docker Linux x64 com armazenamento overlay2 neste Codespace.');
+const disk=fs.statfsSync(info.DockerRootDir,{bigint:true}),freeGiB=Number(disk.bavail*disk.bsize)/1024**3;
+if(info.NCPU<4||info.MemTotal<14*1024**3||freeGiB<26)throw Error('Recursos insuficientes: necessario 4 CPUs, 14 GiB RAM e 26 GiB livres antes do download.');
+const tenant=createCodespacesTenant(id);
+writeJSON(path.join(RUNTIME,'codespaces-storage-confirmed.json'),{runtime:'codespaces',name:remote.name,serverId:info.ID,dockerRootDir:info.DockerRootDir,checkedAt:new Date().toISOString(),initialFreeGiB:freeGiB});
+console.log(JSON.stringify({prepared:true,id,freeGiB:Number(freeGiB.toFixed(1)),urls:tenant.urls,portsPublic:false,deferred:tenant.deferredServices},null,2));

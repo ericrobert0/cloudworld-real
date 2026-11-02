@@ -66,7 +66,7 @@ export class Monitor{
         const maintenance=fs.existsSync(path.join(tenantPath(t.id),'.operation.lock'));
         if(maintenance){results.push({id:t.id,maintenance:true,checks:[],connectors:[],containers:engine.containers.filter(c=>c.Names?.startsWith(t.project+'-')).map(c=>({name:c.Names,state:containerPhase(c),detail:c.Status}))});continue;}
         const checks=[];const add=async(name,target)=>checks.push({name,...await probe(target)});
-        await Promise.all(Object.entries(t.urls).map(([app,url])=>add(app,{type:'http',url:url+({postiz:'/api/auth/can-register',n8n:'/healthz/readiness',cloud:'/status.php',auth:'/-/health/ready/'}[app]||'/')})));
+        await Promise.all(Object.entries(t.apiUrls||t.urls).map(([app,url])=>add(app,{type:'http',url:url+({postiz:'/api/auth/can-register',n8n:'/healthz/readiness',cloud:'/status.php',auth:'/-/health/ready/'}[app]||'/')})));
         const f=path.join(tenantPath(t.id),'monitoring.private.json'),targets=fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')):[];
         await Promise.all(targets.map(target=>add(target.id,target)));
         const connectors=[];

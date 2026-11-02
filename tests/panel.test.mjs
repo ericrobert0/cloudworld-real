@@ -35,3 +35,24 @@ test('painel exige autenticacao, rejeita CSRF e Host falso; pagina tem JS valido
     assert.equal((await fetch(base+'/api/action',{...post,headers:{...post.headers,Origin:base},body:JSON.stringify({action:'create',id:'../escape'})})).status,400);
   }finally{child.kill();}
 });
+
+test('painel atras de HTTPS aceita somente o host e a origem configurados',async()=>{
+  const port=18200,origin='https://example-cloudworld-8099.app.github.dev';
+  const child=spawn(process.execPath,[path.join(ROOT,'panel.mjs')],{env:{...process.env,VW_PANEL_PORT:String(port),CW_PANEL_ORIGIN:origin,CW_PANEL_PROXY_HOST:`localhost:${port}`},windowsHide:true,stdio:'ignore'});
+  try{
+    for(let i=0;i<60;i++){try{await fetch(`http://127.0.0.1:${port}`);break;}catch{await setTimeout(100);}}
+    const password=fs.readFileSync(path.join(RUNTIME,'panel-password.txt'),'utf8').trim();
+    const request=(route,headers={},body)=>new Promise((resolve,reject)=>{
+      const req=http.request({hostname:'127.0.0.1',port,path:route,method:body?'POST':'GET',headers:{Host:new URL(origin).host,...headers}},res=>{res.resume();resolve(res.statusCode);});req.on('error',reject);req.end(body);
+    });
+    assert.equal(await request('/'),401);
+    const auth={Authorization:'Basic '+Buffer.from('admin:'+password).toString('base64')};
+    assert.equal(await request('/',auth),200);
+    assert.equal(await request('/',{...auth,Host:`localhost:${port}`}),200);
+    assert.equal(await request('/',{...auth,Host:'attacker.invalid'}),403);
+    assert.equal(await request('/',{...auth,Host:'attacker.invalid','X-Forwarded-Host':new URL(origin).host}),403);
+    const payload=JSON.stringify({action:'create',id:'../escape'}),headers={...auth,'Content-Type':'application/json'};
+    assert.equal(await request('/api/action',{...headers,Origin:origin},payload),400);
+    assert.equal(await request('/api/action',{...headers,Origin:'https://attacker.invalid'},payload),403);
+  }finally{child.kill();}
+});

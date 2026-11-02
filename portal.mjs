@@ -64,18 +64,20 @@ export class PortalAccounts{
   }
   logout(cookie){try{const {tenant}=this.authenticate(cookie);atomicJSON(this.file(tenant,'portal-sessions.private.json'),this.sessions(tenant).filter(s=>s.hash!==sha(cookie.split('.')[1])));}catch{}}
 }
-export function createPortal({accounts=new PortalAccounts(),origin='http://127.0.0.1:8100'}={}){
+export function createPortal({accounts=new PortalAccounts(),origin='http://127.0.0.1:8100',proxyHost=null}={}){
   const expected=new URL(origin),secure=expected.protocol==='https:';
   if(!['http:','https:'].includes(expected.protocol)||expected.username||expected.password||expected.pathname!=='/'||expected.search||expected.hash)throw Error('Informe apenas a origem HTTP/HTTPS do portal');
   origin=expected.origin;
   if(!secure&&!['127.0.0.1','localhost'].includes(expected.hostname))throw Error('Portal externo exige HTTPS.');
+  if(proxyHost!==null&&(!secure||!/^localhost:[1-9][0-9]{0,4}$/.test(proxyHost)||Number(proxyHost.split(':')[1])>65535))throw Error('Alias do proxy deve ser localhost com porta e origem HTTPS.');
   const page=fs.readFileSync(path.join(ROOT,'public','portal.html'));
   const oidc=new PortalOIDC(accounts,{origin});
   const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(value));};
   const server=http.createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
-    if(req.headers.host!==expected.host){res.writeHead(403);res.end();return;}
+    const fromLoopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+    if(req.headers.host!==expected.host&&!(proxyHost&&fromLoopback&&req.headers.host===proxyHost)){res.writeHead(403);res.end();return;}
     const cookie=req.headers.cookie?.split(';').map(s=>s.trim()).find(s=>s.startsWith('cw_portal='))?.slice(10);
     try{
       if(req.method==='GET'&&req.url==='/'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(page);return;}
@@ -108,5 +110,5 @@ export function createPortal({accounts=new PortalAccounts(),origin='http://127.0
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===path.join(ROOT,'portal.mjs')){
   const origin=process.env.CW_PORTAL_ORIGIN||'http://127.0.0.1:8100',port=Number(process.env.CW_PORTAL_PORT||8100);
-  const {server}=createPortal({origin});server.listen(port,'127.0.0.1',()=>console.log('Portal CloudWorld: '+origin));
+  const {server}=createPortal({origin,proxyHost:process.env.CW_PORTAL_PROXY_HOST||null});server.listen(port,'127.0.0.1',()=>console.log('Portal CloudWorld: '+origin));
 }

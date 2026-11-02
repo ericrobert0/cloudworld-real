@@ -1,1 +1,15 @@
-{"name":"CloudWorld — execução real","image":"mcr.microsoft.com/devcontainers/javascript-node:5-24-bookworm","features":{"ghcr.io/devcontainers/features/docker-in-docker:4":{}},"remoteUser":"node","postCreateCommand":"npm ci --ignore-scripts","customizations":{"vscode":{"settings":{"remote.autoForwardPorts":false}}}}
+{
+  "name": "CloudWorld — execução real",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {}
+  },
+  "remoteUser": "node",
+  "postCreateCommand": "node scripts/Configure-CodespacesDocker.mjs && npm ci --ignore-scripts",
+  "postStartCommand": "node scripts/Start-CodespacesPanels.mjs",
+  "customizations": {
+    "vscode": {
+      "settings": { "remote.autoForwardPorts": false }
+    }
+  }
+}
