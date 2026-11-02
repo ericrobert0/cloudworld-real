@@ -12,6 +12,10 @@ Aplicar a mudança com o daemon já sobrecarregado não recuperou aquela execuç
 
 Na amostra inicial, com 27 containers ativos, `ps` mostrou o processo Docker usando 0,7% da memória e 4,0% de CPU. Na execução anterior, havia atingido 41,7% de memória e 127% de CPU. Essas amostras foram coletadas em momentos diferentes e não são um benchmark controlado. A retomada das aplicações terminou com código zero. A observação prolongada e os testes funcionais ainda devem ser consultados nos relatórios antes de considerar o ambiente estável.
 
+O ensaio iniciado às 15:52 terminou às **16:22:36 de 02/11/2026 (São Paulo)** com os 30 minutos solicitados concluídos, mesma identidade e mesmo processo Docker, sem falha detectada e sem incremento de OOM nos contadores disponíveis. Parte do fim da janela ocorreu durante a manutenção normal para backup, com aplicações parando; esse teste verifica o daemon, não disponibilidade ininterrupta de todas as ferramentas. Na amostra posterior, após 34 minutos, o daemon usava 0,8% da memória e 2,1% de CPU.
+
+Foram aprovados 59 testes de código, 44 verificações dos serviços, sete do portal, 17 do fluxo real e quatro de ciclo de vida. O login foi confirmado pelo navegador integrado. A observação de uma única sessão não aprova operação comercial contínua.
+
 O recebimento de SIGTERM continua registrado como evento real. Esta correção remove uma fonte comprovada de trabalho desnecessário; **não identifica quem enviou os sinais anteriores nem prova disponibilidade futura**. Não foram criados reinícios contínuos nem alterações nas regras de inatividade do Codespaces.
 
 ## Fontes primárias

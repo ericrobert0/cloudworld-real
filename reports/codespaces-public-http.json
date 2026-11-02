@@ -1,0 +1,90 @@
+{
+  "at": "2026-11-02T19:54:21.542Z",
+  "checks": [
+    {
+      "application": "portal",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-8100.app.github.dev/",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "application": "auth",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18001.app.github.dev/",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "application": "chat",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18002.app.github.dev/",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "application": "postiz",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18004.app.github.dev/",
+      "status": 307,
+      "ok": true
+    },
+    {
+      "application": "cloud",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18005.app.github.dev/",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "application": "erp",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18006.app.github.dev/",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "application": "portal-dados-privados",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-8100.app.github.dev/api/me",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "application": "auth-dados-privados",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18001.app.github.dev/api/v3/core/users/me/",
+      "status": 403,
+      "ok": true
+    },
+    {
+      "application": "chat-dados-privados",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18002.app.github.dev/api/v1/accounts/1/contacts",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "application": "postiz-dados-privados",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18004.app.github.dev/api/public/v1/integrations",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "application": "cloud-dados-privados",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18005.app.github.dev/remote.php/dav/files/admin/",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "application": "erp-dados-privados",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18006.app.github.dev/api/resource/Customer",
+      "status": 403,
+      "ok": true
+    },
+    {
+      "application": "operador-acesso-privado",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-8099.app.github.dev/",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "application": "n8n-acesso-privado",
+      "url": "https://laughing-barnacle-gxpjggg4j6xhvjvg-18003.app.github.dev/",
+      "status": 302,
+      "ok": true
+    }
+  ],
+  "scope": "HTTPS sem credenciais: disponibilidade, recusa de dados privados e barreira de acesso administrativo. Nao e auditoria completa nem garantia contra ataques."
+}

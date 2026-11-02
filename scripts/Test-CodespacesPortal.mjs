@@ -18,6 +18,16 @@ try{
     assert.equal(r.status,200);const header=r.headers['set-cookie']?.[0]||'';
     for(const flag of ['HttpOnly','Secure','SameSite=Strict'])assert.ok(header.includes(flag));cookie=header.split(';')[0];assert.ok(cookie);
   });
+  await check('Proxy HTTPS aceita somente fetch same-origin e preserva a protecao da sessao',async()=>{
+    const headers={Host:'localhost:8100',Origin:'https://localhost:8100','Content-Type':'application/json',Cookie:cookie};
+    for(const site of ['cross-site','same-site'])assert.equal((await request('/api/logout',{method:'POST',headers:{...headers,'Sec-Fetch-Site':site},body:{}})).status,403);
+    assert.equal((await request('/api/logout',{method:'POST',headers,body:{}})).status,403);
+    assert.equal((await request('/api/me',{headers:{Cookie:cookie}})).status,200);
+    assert.equal((await request('/api/logout',{method:'POST',headers:{...headers,'Sec-Fetch-Site':'same-origin'},body:{}})).status,200);
+    const r=await request('/api/login',{method:'POST',headers:{...headers,'Sec-Fetch-Site':'same-origin'},body:{tenant:id,username:credentials.username,password:credentials.password}});
+    assert.equal(r.status,200);const header=r.headers['set-cookie']?.[0]||'';
+    assert.ok(header.includes('Secure'));cookie=header.split(';')[0];assert.ok(cookie);
+  });
   await check('Cliente recebe quatro ferramentas da sua empresa com HTTPS',async()=>{
     assert.ok(cookie);const r=await request('/api/me',{headers:{Cookie:cookie}});assert.equal(r.status,200);assert.equal(r.data.company,id);
     assert.deepEqual(r.data.apps.map(a=>a.id).sort(),['chat','cloud','erp','postiz']);

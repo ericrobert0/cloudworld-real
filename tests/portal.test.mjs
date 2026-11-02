@@ -67,5 +67,11 @@ test('proxy local explicito preserva HTTPS e CSRF sem confiar em X-Forwarded-Hos
     assert.equal((await request('/api/login',{...headers,Origin:'https://attacker.invalid'},body)).status,403);
     const login=await request('/api/login',{...headers,Origin:origin},body);
     assert.equal(login.status,200);assert.match(login.headers['set-cookie'][0],/; Secure/);
+    const alias='https://localhost:'+port;
+    assert.equal((await request('/api/login',{...headers,Origin:alias},body)).status,403);
+    for(const site of ['cross-site','same-site'])assert.equal((await request('/api/login',{...headers,Origin:alias,'Sec-Fetch-Site':site},body)).status,403);
+    assert.equal((await request('/api/login',{...headers,Origin:'https://attacker.invalid','Sec-Fetch-Site':'same-origin'},body)).status,403);
+    const forwarded=await request('/api/login',{...headers,Origin:alias,'Sec-Fetch-Site':'same-origin'},body);
+    assert.equal(forwarded.status,200);assert.match(forwarded.headers['set-cookie'][0],/; Secure/);
   }finally{await new Promise(resolve=>server.close(resolve));}
 });

@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "codespace": "laughing-barnacle-gxpjggg4j6xhvjvg",
+  "previousFailureReport": "reports/codespaces-fresh-host.json",
+  "codeTests": {"passed": 59, "failed": 0},
+  "applicationChecks": {"passed": 44, "total": 44},
+  "portalChecks": {"passed": 7, "total": 7},
+  "integrationFlowChecks": {"passed": 17, "total": 17},
+  "containerLifecycleChecks": {"passed": 4, "total": 4},
+  "dockerObservation": {"requestedSeconds": 1800, "completed": true, "ok": true, "lastSampleAt": "2026-11-02T19:22:36.509Z", "oom": 0, "oomKill": 0, "scope": "Daemon availability and identity; final portion includes planned backup maintenance."},
+  "dockerProcessSamples": {"beforeFix": {"memoryPercent": 41.7, "cpuPercent": 127}, "afterCleanStart": {"memoryPercent": 0.7, "cpuPercent": 4}, "after34Minutes": {"memoryPercent": 0.8, "cpuPercent": 2.1}, "controlledBenchmark": false},
+  "erpConnector": {"httpStatus": 200, "apiKeyMatched": true, "unreadableSecretReencrypted": true, "previousCiphertextSavedPrivately": true, "globalEncryptionKeyChanged": false},
+  "browserPortalLoginVerified": true,
+  "backup": {"created": true, "files": 38, "integrityVerified": true, "encryptedExportVerified": true, "coldWriters": true, "externalCopy": false, "restoreTested": false, "servicesPassedAfterResume": 44},
+  "securityBaseline": {"passed": 18, "total": 18, "independentAudit": false},
+  "publicHTTPSChecks": {"passed": 14, "total": 14},
+  "publicPorts": [8100, 18001, 18002, 18004, 18005, 18006],
+  "privatePorts": [8099, 18003],
+  "remainingBeforeProduction": ["MFA enrollment", "Separate portal process identity from Docker operator", "Verified off-host backup and recovery", "Independent security review", "Ongoing security updates and availability plan"],
+  "productionReady": false
+}

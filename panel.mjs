@@ -8,6 +8,7 @@ import {catalog,tenants as listTenants} from './service.mjs';
 import {createControlAPI} from './api.mjs';
 import {loadJobHistory,saveJobHistory} from './operations.mjs';
 import {ContainerEvents,DockerEventStream,projectContainers,dockerStatusArgs} from './docker-events.mjs';
+import {requestOriginAllowed} from './request-origin.mjs';
 fs.mkdirSync(RUNTIME,{recursive:true});
 const keyPath=path.join(RUNTIME,'panel-password.txt');
 if(!fs.existsSync(keyPath))fs.writeFileSync(keyPath,secret(),{mode:0o600});
@@ -33,7 +34,7 @@ function refreshEngine(){
   p.on('close',code=>{clearTimeout(timer);engineQuery=false;try{engine={at:new Date().toISOString(),containers:lifecycle.decorate(code===0?projectContainers(out.split('\n').filter(Boolean).map(s=>JSON.parse(s))):[]),error:code===0?null:err.slice(-1000)||'Docker nao respondeu',events:lifecycle.status()};}catch(e){engine={at:new Date().toISOString(),containers:[],error:e.message,events:lifecycle.status()};}});
 }
 refreshEngine();setInterval(refreshEngine,15000).unref();eventStream.start();
-const control=createControlAPI({listTenants,engine:()=>engine,origin});
+const control=createControlAPI({listTenants,engine:()=>engine,origin,proxyHost});
 const page=fs.readFileSync(path.join(ROOT,'public','index.html'),'utf8').replace('/* PANEL_APP */',()=>fs.readFileSync(path.join(ROOT,'public','panel.js'),'utf8'));
 const staticAssets={
   '/assets/bootstrap.min.css': ['vendor/bootstrap.min.css','text/css; charset=utf-8'],
@@ -56,7 +57,7 @@ const server=http.createServer(async(req,res)=>{
     res.setHeader('Content-Type','application/json');res.end(JSON.stringify({tenants,jobs,busy,engine,catalog}));return;
   }
   if(req.method==='POST'&&req.url==='/api/action'){
-    if(req.headers.origin!==origin||!req.headers['content-type']?.startsWith('application/json')){res.writeHead(403);res.end('Origin ou Content-Type invalido');return;}
+    if(!requestOriginAllowed(req,{origin,proxyHost})||!req.headers['content-type']?.startsWith('application/json')){res.writeHead(403);res.end('Origin ou Content-Type invalido');return;}
     if(busy){res.writeHead(409);res.end('Aguarde a operação atual');return;}
     let body='';for await(const chunk of req){body+=chunk;if(body.length>4096){res.writeHead(413);res.end();return;}}
     try {

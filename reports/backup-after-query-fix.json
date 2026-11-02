@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "client": "apresentacao",
+  "at": "2026-11-02T19:30:31.020Z",
+  "files": 38,
+  "keyId": "da8a03df38fd7f55",
+  "backupAt": "2026-11-02T19:25:46.664Z",
+  "coldWriters": true,
+  "externalCopy": false,
+  "restoreTested": false
+}

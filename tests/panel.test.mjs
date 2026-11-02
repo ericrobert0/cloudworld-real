@@ -37,6 +37,7 @@ test('painel exige autenticacao, rejeita CSRF e Host falso; pagina tem JS valido
 });
 
 test('painel atras de HTTPS aceita somente o host e a origem configurados',async()=>{
+  createTenant('proxyapi');
   const port=18200,origin='https://example-cloudworld-8099.app.github.dev';
   const child=spawn(process.execPath,[path.join(ROOT,'panel.mjs')],{env:{...process.env,VW_PANEL_PORT:String(port),CW_PANEL_ORIGIN:origin,CW_PANEL_PROXY_HOST:`localhost:${port}`},windowsHide:true,stdio:'ignore'});
   try{
@@ -54,5 +55,9 @@ test('painel atras de HTTPS aceita somente o host e a origem configurados',async
     const payload=JSON.stringify({action:'create',id:'../escape'}),headers={...auth,'Content-Type':'application/json'};
     assert.equal(await request('/api/action',{...headers,Origin:origin},payload),400);
     assert.equal(await request('/api/action',{...headers,Origin:'https://attacker.invalid'},payload),403);
+    const forwarded={...headers,Host:`localhost:${port}`,Origin:`https://localhost:${port}`,'Sec-Fetch-Site':'same-origin'};
+    assert.equal(await request('/api/action',forwarded,payload),400);
+    assert.equal(await request('/api/action',{...forwarded,'Sec-Fetch-Site':'cross-site'},payload),403);
+    assert.equal(await request('/api/v1/tenants/proxyapi/keys',forwarded,JSON.stringify({scopes:['invalid']})),400);
   }finally{child.kill();}
 });

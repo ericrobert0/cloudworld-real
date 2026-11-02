@@ -22,7 +22,7 @@ export function codespacesGateway(urls){
     if(u.protocol!=='https:'||!/^[a-z0-9-]+\.app\.github\.dev$/.test(u.hostname)||u.port)throw Error('Endereco Codespaces invalido no gateway.');
     // Postiz computes a parent cookie domain. Scope it to this forwarded hostname.
     const cookie=app==='postiz'?` header_down Set-Cookie "(?i)Domain=[^;]+" "Domain=${u.hostname}"\n`:'';
-    return `:${port} {\n encode gzip\n reverse_proxy ${targets[app]} {\n header_up Host ${u.host}\n header_up X-Forwarded-Proto https\n${cookie} }\n}\n`;
+    return `:${port} {\n encode gzip\n @forwarded_browser {\n host localhost\n header Origin https://localhost:${port}\n header Sec-Fetch-Site same-origin\n }\n request_header @forwarded_browser Origin ${u.origin}\n header {\n ?X-Content-Type-Options nosniff\n ?X-Frame-Options SAMEORIGIN\n ?Referrer-Policy strict-origin-when-cross-origin\n >Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"\n -Server\n }\n reverse_proxy ${targets[app]} {\n header_up Host ${u.host}\n header_up X-Forwarded-Proto https\n${cookie} }\n}\n`;
   }).join('\n');
 }
 export function createCodespacesTenant(id,env=process.env){

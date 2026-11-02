@@ -7,6 +7,7 @@ import {ROOT,RUNTIME,tenantPath} from './infra.mjs';
 import {atomicJSON} from './integration.mjs';
 import {readBody} from './api.mjs';
 import {PortalOIDC,oidcSettings} from './oidc.mjs';
+import {requestOriginAllowed} from './request-origin.mjs';
 const scrypt=promisify(crypto.scrypt),sha=s=>crypto.createHash('sha256').update(s).digest('hex');
 const fail=(s,status=400)=>Object.assign(Error(s),{status});
 export const customerApps={chat:'Atendimento',erp:'Gestão empresarial',cloud:'Arquivos',postiz:'Redes sociais'};
@@ -76,13 +77,14 @@ export function createPortal({accounts=new PortalAccounts(),origin='http://127.0
   const server=http.createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    if(secure)res.setHeader('Strict-Transport-Security','max-age=63072000; includeSubDomains; preload');
     const fromLoopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
     if(req.headers.host!==expected.host&&!(proxyHost&&fromLoopback&&req.headers.host===proxyHost)){res.writeHead(403);res.end();return;}
     const cookie=req.headers.cookie?.split(';').map(s=>s.trim()).find(s=>s.startsWith('cw_portal='))?.slice(10);
     try{
       if(req.method==='GET'&&req.url==='/'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(page);return;}
       if(req.method==='POST'&&req.url==='/api/sso/start'){
-        if(req.headers.origin!==origin)throw fail('Origem invalida',403);
+        if(!requestOriginAllowed(req,{origin,proxyHost}))throw fail('Origem invalida',403);
         const {tenant}=await readBody(req,4096);accounts.limit('oidc:'+req.socket.remoteAddress+':'+String(tenant),{max:60,windowMs:60000});
         const flow=await oidc.start(tenant);res.setHeader('Set-Cookie','cw_oidc='+flow.cookie+'; Path=/auth/callback; HttpOnly; SameSite=Lax; Max-Age=300'+(secure?'; Secure':''));json(res,200,{url:flow.url});return;
       }
@@ -94,7 +96,7 @@ export function createPortal({accounts=new PortalAccounts(),origin='http://127.0
       const assets={'/portal.js':['portal.js','application/javascript'],'/portal.css':['portal.css','text/css'],'/bootstrap.css':['vendor/bootstrap.min.css','text/css']};
       if(req.method==='GET'&&assets[req.url]){const [file,type]=assets[req.url];res.setHeader('Content-Type',type+'; charset=utf-8');res.end(fs.readFileSync(path.join(ROOT,'public',file)));return;}
       if(req.method==='POST'&&['/api/login','/api/logout'].includes(req.url)){
-        if(req.headers.origin!==origin)throw fail('Origem invalida',403);
+        if(!requestOriginAllowed(req,{origin,proxyHost}))throw fail('Origem invalida',403);
         if(req.url==='/api/logout'){accounts.logout(cookie);res.setHeader('Set-Cookie','cw_portal=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'+(secure?'; Secure':''));json(res,200,{ok:true});return;}
         const body=await readBody(req,4096),token=await accounts.login(body.tenant,body.username,body.password,req.socket.remoteAddress);
         res.setHeader('Set-Cookie','cw_portal='+token+'; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800'+(secure?'; Secure':''));json(res,200,{ok:true});return;

@@ -4,6 +4,7 @@ import {PortalAccounts} from './portal.mjs';
 import {AlertStore,readiness} from './operations.mjs';
 import {NotificationDelivery,notificationSettings,configureNotifications} from './notifications.mjs';
 import {ssoStatus,requireCentralLogin} from './oidc.mjs';
+import {requestOriginAllowed} from './request-origin.mjs';
 
 const err=(message,status)=>Object.assign(Error(message),{status});
 export async function readBody(req,max=65536){
@@ -19,7 +20,7 @@ export function normalizeWebhook(source,body){
   if(source==='waha'&&body.event==='message'&&!body.payload?.fromMe)return {type:'message.received',payload:{text:body.payload?.body,chatId:body.payload?.from,source:'waha',sourceId:body.payload?.id}};
   throw err('Evento nao suportado (mensagens de saida sao ignoradas)',422);
 }
-export function createControlAPI({listTenants,engine,origin,hub=new IntegrationHub()}){
+export function createControlAPI({listTenants,engine,origin,proxyHost=null,hub=new IntegrationHub()}){
   const monitor=new Monitor(hub),accounts=new PortalAccounts(),alerts=new AlertStore(),notifications=new NotificationDelivery();
   const tick=async()=>{const all=listTenants(),ids=all.map(t=>t.id);await Promise.allSettled([(async()=>{await hub.pollSources(ids);await hub.drain(ids);})(),(async()=>{await monitor.refresh(all,engine());alerts.evaluate(monitor.snapshot);await notifications.tick();})()]);};
   const worker=setInterval(()=>{tick().catch(()=>{});},15000);worker.unref();
@@ -30,7 +31,7 @@ export function createControlAPI({listTenants,engine,origin,hub=new IntegrationH
     try{
       const [,id,resource]=m;hub.dir(id);
       const mutating=!['GET','HEAD'].includes(req.method);
-      if(operator&&mutating&&req.headers.origin!==origin)throw err('Origin invalida',403);
+      if(operator&&mutating&&!requestOriginAllowed(req,{origin,proxyHost}))throw err('Origin invalida',403);
       // Bearer clients use explicit scoped tokens; never gain operator rights.
       const authorize=scope=>{if(!operator)hub.authorize(id,req.headers.authorization,scope);};
       const onlyOperator=()=>{if(!operator)throw err('Acesso exclusivo do operador',403);};

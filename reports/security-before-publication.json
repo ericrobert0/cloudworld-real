@@ -1,0 +1,81 @@
+{
+  "at": "2026-11-02T19:45:58.777Z",
+  "client": "apresentacao",
+  "ok": true,
+  "checks": [
+    {
+      "name": "Credenciais distintas e fortes nos arquivos gerados",
+      "ok": true
+    },
+    {
+      "name": "Containers sem privilegios do host e bancos sem portas publicadas",
+      "ok": true
+    },
+    {
+      "name": "ERPNext com cadastro publico desativado",
+      "ok": true
+    },
+    {
+      "name": "Nextcloud com protecao contra tentativas e sem aplicativo de cadastro aberto",
+      "ok": true
+    },
+    {
+      "name": "Proxy com cabecalhos de seguranca e configuracao validada",
+      "ok": true
+    },
+    {
+      "name": "Postiz sem novas inscricoes publicas",
+      "ok": true
+    },
+    {
+      "name": "auth: dados recusados sem autenticacao",
+      "ok": true
+    },
+    {
+      "name": "chat: dados recusados sem autenticacao",
+      "ok": true
+    },
+    {
+      "name": "erp: dados recusados sem autenticacao",
+      "ok": true
+    },
+    {
+      "name": "cloud: dados recusados sem autenticacao",
+      "ok": true
+    },
+    {
+      "name": "postiz: dados recusados sem autenticacao",
+      "ok": true
+    },
+    {
+      "name": "Portal recusa dados privados e arquivos de configuracao sem sessao",
+      "ok": true
+    },
+    {
+      "name": "auth: conector autenticado apos protecoes",
+      "ok": true
+    },
+    {
+      "name": "chat: conector autenticado apos protecoes",
+      "ok": true
+    },
+    {
+      "name": "erp: conector autenticado apos protecoes",
+      "ok": true
+    },
+    {
+      "name": "cloud: conector autenticado apos protecoes",
+      "ok": true
+    },
+    {
+      "name": "postiz: conector autenticado apos protecoes",
+      "ok": true
+    },
+    {
+      "name": "n8n: conector autenticado apos protecoes",
+      "ok": true
+    }
+  ],
+  "portsPublishedByThisScript": false,
+  "scope": "Verificacao funcional de controles basicos; nao e pentest, auditoria completa ou garantia contra ataques. MFA, atualizacoes continuas e backup fora do host ainda precisam de operacao propria."
+}
