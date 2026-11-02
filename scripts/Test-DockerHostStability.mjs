@@ -1,6 +1,7 @@
 // Bounded, read-only sampling: never starts Docker or changes host/idle policies.
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {RUNTIME,writeJSON} from '../infra.mjs';
@@ -14,6 +15,15 @@ const deadline=Date.now()+seconds*1000;
 let identity,processIdentity;
 async function sample(){
   const entry={at:new Date().toISOString(),up:false};
+  entry.hostFreeMiB=Math.round(os.freemem()/1024**2);
+  if(process.platform==='linux'){
+    try{
+      const current=fs.readFileSync('/sys/fs/cgroup/memory.current','utf8').trim();
+      const maximum=fs.readFileSync('/sys/fs/cgroup/memory.max','utf8').trim();
+      const events=Object.fromEntries(fs.readFileSync('/sys/fs/cgroup/memory.events','utf8').trim().split('\n').map(line=>line.trim().split(/\s+/)));
+      entry.cgroup={currentMiB:Math.round(Number(current)/1024**2),limitMiB:maximum==='max'?null:Math.round(Number(maximum)/1024**2),oom:Number(events.oom||0),oomKill:Number(events.oom_kill||0)};
+    }catch{} // Older cgroup layouts are optional, never fabricated as zero pressure.
+  }
   try{
     const {stdout}=await run('docker',['info','--format','{{json .}}'],{timeout:8000,maxBuffer:1024*1024,windowsHide:true});
     const data=JSON.parse(stdout);identity??=data.ID;

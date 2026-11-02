@@ -1,5 +1,12 @@
 import {spawn} from 'node:child_process';
 
+// Full {{json .}} invokes Size during CLI template preprocessing. Explicitly
+// disable that costly filesystem scan and collect only fields used by CloudWorld.
+export function dockerStatusArgs(){
+  const format='{"ID":{{json .ID}},"Names":{{json .Names}},"State":{{json .State}},"Status":{{json .Status}},"Image":{{json .Image}},"Labels":{"com.docker.compose.project":{{json (.Label "com.docker.compose.project")}}}}';
+  return ['ps','-a','--size=false','--filter','label=com.docker.compose.project','--format',format];
+}
+
 const actions=new Set(['create','start','restart','kill','die','stop','pause','unpause','destroy','oom','health_status: healthy','health_status: unhealthy']);
 const terminationSignals=new Set(['2','9','15','INT','KILL','TERM','SIGINT','SIGKILL','SIGTERM']);
 const validProject=p=>typeof p==='string'&&/^vw-[a-z][a-z0-9-]{1,30}$/.test(p);

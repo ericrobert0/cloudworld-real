@@ -7,7 +7,7 @@ import {ROOT,RUNTIME,secret,tenantPath} from './infra.mjs';
 import {catalog,tenants as listTenants} from './service.mjs';
 import {createControlAPI} from './api.mjs';
 import {loadJobHistory,saveJobHistory} from './operations.mjs';
-import {ContainerEvents,DockerEventStream,projectContainers} from './docker-events.mjs';
+import {ContainerEvents,DockerEventStream,projectContainers,dockerStatusArgs} from './docker-events.mjs';
 fs.mkdirSync(RUNTIME,{recursive:true});
 const keyPath=path.join(RUNTIME,'panel-password.txt');
 if(!fs.existsSync(keyPath))fs.writeFileSync(keyPath,secret(),{mode:0o600});
@@ -27,7 +27,7 @@ const eventStream=new DockerEventStream({tracker:lifecycle,onUpdate:()=>{
 }});
 function refreshEngine(){
   if(engineQuery)return;engineQuery=true;
-  const p=spawn('docker',['ps','-a','--format','{{json .}}'],{windowsHide:true});let out='',err='';
+  const p=spawn('docker',dockerStatusArgs(),{windowsHide:true});let out='',err='';
   const timer=setTimeout(()=>p.kill(),8000);p.stdout.on('data',d=>{if(out.length<2*1024*1024)out+=d;else p.kill();});p.stderr.on('data',d=>err=(err+d).slice(-2000));
   p.on('error',e=>{clearTimeout(timer);engineQuery=false;engine={at:new Date().toISOString(),containers:[],error:e.message,events:lifecycle.status()};});
   p.on('close',code=>{clearTimeout(timer);engineQuery=false;try{engine={at:new Date().toISOString(),containers:lifecycle.decorate(code===0?projectContainers(out.split('\n').filter(Boolean).map(s=>JSON.parse(s))):[]),error:code===0?null:err.slice(-1000)||'Docker nao respondeu',events:lifecycle.status()};}catch(e){engine={at:new Date().toISOString(),containers:[],error:e.message,events:lifecycle.status()};}});
