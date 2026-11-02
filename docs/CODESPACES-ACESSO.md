@@ -2,6 +2,8 @@
 
 **Pendência atual:** o Docker está recebendo encerramentos externos. As aplicações passaram em testes durante janelas ativas, mas ainda não há estabilidade para uma apresentação completa. Consulte [a evidência e o diagnóstico](CODESPACES-ENCERRAMENTO-DOCKER.md).
 
+**Atualização de 02/11 às 15:31 (São Paulo):** um segundo host, `laughing-barnacle-gxpjggg4j6xhvjvg`, também encerrou o Docker depois de passar em uma janela de observação de 15 minutos. Nesse host, contas e integrações ficaram incompletas e as oito portas permaneceram privadas. Os endereços e arquivos de contas listados abaixo referem-se ao **host original** e não confirmam disponibilidade atual. Não preparar uma apresentação até resolver esse bloqueio e repetir as verificações.
+
 Este ambiente executa aplicações reais em um servidor remoto do GitHub Codespaces. O computador pessoal não hospeda essas aplicações. O proprietário precisa abrir/retomar o Codespace antes da apresentação; os visitantes não conseguem retomá-lo por conta própria. A franquia gratuita e a suspensão por inatividade continuam valendo.
 
 ## Dois acessos diferentes

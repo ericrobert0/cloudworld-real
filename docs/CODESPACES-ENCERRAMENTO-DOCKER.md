@@ -51,3 +51,9 @@ O comando abaixo observa a identidade e disponibilidade do Docker durante 15 min
 ```sh
 node scripts/Test-DockerHostStability.mjs 900
 ```
+
+Resultado no novo host: a reconstrução recuperou 27,7 GiB livres; PING, DNS, dois alvos TCP e ARP passaram. O teste pela API aprovou quatro verificações, incluindo `stopping` real e isolamento do projeto descartável. A janela de 15 minutos terminou sem falhas às **15:20 de 02/11/2026, horário de São Paulo**, durante o download das aplicações. Isso não encerra a investigação do host original nem comprova estabilidade com todo o pacote em execução.
+
+**Falha posterior:** às **15:30:54**, o daemon do segundo host registrou `Processing signal 'terminated'`. Às **15:31:17**, registrou `Daemon shutdown complete`, e `docker info` deixou de conectar. A inicialização desse processo tinha terminado às 15:03:58. O remetente do sinal não foi capturado neste segundo host; não atribuir a causa a uma política específica. A janela de 15 minutos aprovada continua sendo um resultado limitado, seguido de falha posterior.
+
+As imagens foram baixadas, bancos e aplicações começaram a executar, mas a instalação e o bootstrap de contas não foram concluídos. Os testes completos dos serviços e da integração não foram aprovados no segundo host. Não publicar as portas como se o ambiente estivesse pronto. Permaneceram processos `containerd-shim` após a queda; por isso não foi feita cópia física dos volumes enquanto poderiam existir escritores ativos. Os dados permanecem no Codespace, e o host deve ser parado para preservar o estado e evitar consumo de processamento. Nenhum terceiro host ou recurso pago foi criado.

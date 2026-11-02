@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-02",
+  "codespace": "laughing-barnacle-gxpjggg4j6xhvjvg",
+  "previousCodespacePreserved": "effective-guacamole-5vqqrwwxrq6xfv54x",
+  "resources": {"cpus": 4, "memoryGiB": 15.6, "initialFreeGiBAfterRebuild": 27.7},
+  "codeTests": {"passed": 57, "failed": 0, "environments": ["local", "fresh-codespace"]},
+  "networkChecks": {"passed": 5, "failed": 0, "types": ["ping", "dns", "tcp", "tcp", "arping"]},
+  "dockerLifecycleThroughOperatorAPI": {"passed": 4, "failed": 0, "testProjectIsolated": true},
+  "dockerObservation": {"durationSeconds": 900, "passed": true, "finishedAtLocal": "2026-11-02T15:20:03-03:00", "scope": "Sampling during installation; does not prove long-term uptime or full-stack stability."},
+  "installation": "interrupted-by-docker-termination",
+  "laterFailure": {"at": "2026-11-02T18:30:54.521359300Z", "localTime": "2026-11-02T15:30:54-03:00", "signalLogged": "terminated", "daemonShutdownCompleteAt": "2026-11-02T18:31:17.189795765Z", "sender": "not-captured-on-fresh-host", "engineUnavailableConfirmed": true},
+  "accountsAndConnectors": "bootstrap-incomplete; full application flow not validated on fresh host",
+  "coldRecoveryCopy": "not-created: orphan containerd-shim processes remained; no copy made while writers might exist",
+  "ports": {"forwarded": [8099, 8100, 18001, 18002, 18003, 18004, 18005, 18006], "visibility": "private"},
+  "externalSNMPDevice": "not-provided",
+  "productionReady": false
+}

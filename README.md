@@ -1,6 +1,6 @@
 # CloudWorld — plataforma de serviços por empresa
 
-**Apresentação remota real:** seis aplicações instaladas e 57 testes de código aprovados. O monitoramento inclui PING, DNS, TCP, ARP e eventos dos containers, separados por empresa. No host original do Codespaces, encerramentos externos do Docker ainda impedem estabilidade contínua. Consulte `docs/CODESPACES-ENCERRAMENTO-DOCKER.md`, `docs/CODESPACES-ACESSO.md` e `deploy/codespaces/README.md` para os resultados e limitações. A plataforma ainda está em homologação; este ambiente não equivale a hospedagem comercial permanente.
+**Apresentação remota real:** seis aplicações instaladas e 57 testes de código aprovados. O monitoramento inclui PING, DNS, TCP, ARP e eventos dos containers, separados por empresa. Nos dois hosts avaliados do Codespaces, encerramentos do Docker ainda impedem estabilidade contínua. Consulte `docs/CODESPACES-ENCERRAMENTO-DOCKER.md`, `docs/CODESPACES-ACESSO.md` e `deploy/codespaces/README.md` para os resultados e limitações. A plataforma ainda está em homologação; este ambiente não equivale a hospedagem comercial permanente.
 
 **Login central:** o portal suporta Authentik/OIDC com PKCE, vínculo explícito de empresa/usuário e validação assinada. O acesso local permanece disponível na transição. Veja [SSO e laboratório de isolamento](docs/SSO-E-ISOLAMENTO.md) para o escopo exato e as limitações; isso não configura SSO automaticamente nas demais aplicações.
 
