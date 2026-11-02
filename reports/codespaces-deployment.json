@@ -1,0 +1,44 @@
+{
+  "status": "investigating-docker-lifecycle",
+  "repository": "https://github.com/ericrobert0/cloudworld-real",
+  "repositoryVisibility": "private",
+  "sourceArchive": "cloudworld-1.6.2-2026-11-01.tar.gz",
+  "sourceCommit": "262bacc",
+  "codespace": "effective-guacamole-5vqqrwwxrq6xfv54x",
+  "editorUrl": "https://effective-guacamole-5vqqrwwxrq6xfv54x.github.dev/",
+  "machine": {
+    "cores": 4,
+    "memoryGB": 16,
+    "diskGB": 32
+  },
+  "region": "US East",
+  "billing": "Personal GitHub Free; zero Codespaces usage observed before creation. No payment method or paid upgrade added.",
+  "applicationsInstalled": true,
+  "publicPortsEnabled": true,
+  "scope": "Six real applications installed with isolated accounts. 53 unit tests and six internal portal tests passed in this session. Docker repeatedly received termination signals, including after an ordinary rebuild; current application readiness and integrated flow cannot be confirmed. Only portal port 8100 published with explicit user approval; external HTTP 200 verified from the server, integrated browser navigation failed. Other ports remain private.",
+  "installationExitCode": 0,
+  "remoteUnitTestsPassed": 53,
+  "initialFreeGiB": 27.7,
+  "observedFreeGiBAfterInstallation": 9.3,
+  "remotePortalTestsPassed": 6,
+  "revalidationDate": "2026-11-02",
+  "publicPorts": [
+    8100
+  ],
+  "pendingPublicPorts": [
+    18001,
+    18002,
+    18004,
+    18005,
+    18006
+  ],
+  "coldRecoveryCopy": {
+    "remotePath": "runtime/recovery-before-rebuild",
+    "gzipIntegrityVerified": true,
+    "sha256Verified": true,
+    "sizeMB": 460,
+    "restoreTested": false
+  },
+  "ordinaryRebuildApplied": true,
+  "externalPortalHTTP": 200
+}
