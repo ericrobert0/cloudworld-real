@@ -8,6 +8,7 @@ import {containerPhase} from '../monitoring.mjs';
 import {RUNTIME,writeJSON} from '../infra.mjs';
 import {codespacesIdentity} from '../codespaces.mjs';
 const run=promisify(execFile),token=randomUUID(),project='vw-monitor-test-'+token.slice(0,8),name=project+'-probe-1',checks=[];
+let failure;
 const remote=process.env.CODESPACES==='true'?codespacesIdentity():null;
 const panel=remote?async()=>{
   const password=fs.readFileSync(path.join(RUNTIME,'panel-password.txt'),'utf8').trim();
@@ -47,9 +48,9 @@ try{
     if(!response.ok)throw Error('Consulta da empresa falhou.');const data=await response.json();
     if(data.events.some(event=>event.project===project)||data.containers.some(row=>row.name===name))throw Error('Projeto de teste misturado com a empresa.');
   });
-}catch(error){console.error('Teste de ciclo de vida falhou: '+error.message);process.exitCode=1;
+}catch(error){failure=error.message;console.error('Teste de ciclo de vida falhou: '+failure);process.exitCode=1;
 }finally{
   try{const owner=await docker(['inspect','--format','{{index .Config.Labels "cloudworld.lifecycle-test"}}',name]);if(owner.stdout.trim()===token)await docker(['rm','-f',name]);}catch{}
   watcher.close();
-  writeJSON(path.join(RUNTIME,'reports','docker-lifecycle-live.json'),{at:new Date().toISOString(),ok:checks.length===(panel?4:3)&&checks.every(check=>check.ok),operatorPanelChecked:!!panel,checks,scope:'Container descartavel sem rede, volumes ou privilegios; nao interrompe servicos das empresas.'});
+  writeJSON(path.join(RUNTIME,'reports','docker-lifecycle-live.json'),{at:new Date().toISOString(),ok:checks.length===(panel?4:3)&&checks.every(check=>check.ok),operatorPanelChecked:!!panel,checks,error:failure,scope:'Container descartavel sem rede, volumes ou privilegios; nao interrompe servicos das empresas.'});
 }

@@ -20,7 +20,7 @@ O registro integral fica somente em `runtime/docker-start-signals.private.log`. 
 
 ## Verificações realizadas
 
-- 53 testes de código aprovados.
+- 57 testes de código aprovados após a inclusão do coletor de eventos e do isolamento por projeto.
 - Durante uma janela em funcionamento: 44/44 verificações dos serviços, 6/6 do portal e 17/17 do fluxo real Chatwoot → API/fila → ERPNext/n8n.
 - Seis endereços públicos responderam HTTP 200/302/307 durante outra janela em funcionamento. Esse teste partiu do Codespace, sem enviar credenciais, e não substitui login em navegador externo.
 - A navegação pelo navegador integrado falhou. Não foi confirmada uma apresentação completa pelo navegador.
@@ -39,3 +39,15 @@ O repositório é privado: `ericrobert0/cloudworld-real`. `runtime/`, credenciai
 Investigar qual processo externo enviou SIGTERM ao daemon Docker às 12:42:07 UTC de 02/11/2026, remetente apresentado como UID 61876, e verificar a forma suportada de manter o Docker-in-Docker ativo neste Codespace. O problema se repete enquanto o editor está em uso. Aumentar memória, trocar armazenamento, apagar volumes ou desabilitar a suspensão automática não deve ser tratado como solução comprovada.
 
 Este documento é um rascunho local para investigação. Nenhum chamado ou mensagem foi enviado a terceiros.
+
+## Ensaio em outro host
+
+Em 02/11/2026 foi criado um segundo Codespace, `laughing-barnacle-gxpjggg4j6xhvjvg`, com o mesmo repositório privado e 4 núcleos/16 GB. O original foi preservado e estava parado. Antes de instalar aplicações, um container descartável passou nas três verificações de início, transição `stopping` e parada limpa. Esse teste não consultou o painel e não comprova estabilidade prolongada.
+
+A inspeção inicial encontrou apenas 9,9 GiB livres. Não foi iniciado o download do pacote. Foi solicitada reconstrução completa **somente desse ambiente novo, sem clientes nem volumes de aplicações**, para remover o cache da criação. Não repetir essa operação no ambiente original com dados.
+
+O comando abaixo observa a identidade e disponibilidade do Docker durante 15 minutos e para na primeira falha. Não reinicia o daemon nem altera as regras de suspensão. O relatório é atualizado em `runtime/reports/docker-host-stability.json`. Uma janela aprovada não garante disponibilidade futura.
+
+```sh
+node scripts/Test-DockerHostStability.mjs 900
+```

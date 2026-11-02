@@ -1,6 +1,6 @@
 # Codespaces — candidato para apresentação real sem cartão
 
-Estado em 02/11/2026: seis aplicações reais instaladas e contas próprias configuradas. Passaram 53 testes de código e, durante janelas em funcionamento, 44 verificações dos serviços, seis do portal e 17 da integração. As seis portas autorizadas foram publicadas; operação e editor n8n permanecem privados. O Docker continua recebendo encerramentos externos, portanto a apresentação ainda não é estável. Consulte `docs/CODESPACES-ENCERRAMENTO-DOCKER.md` e `docs/CODESPACES-ACESSO.md`.
+Estado do host original em 02/11/2026: seis aplicações reais instaladas e contas próprias configuradas. Passaram 57 testes de código e, durante janelas em funcionamento, 44 verificações dos serviços, seis do portal e 17 da integração. As seis portas autorizadas foram publicadas nessa ocasião; após uma parada completa, conferir novamente os encaminhamentos. Operação e editor n8n devem permanecer privados. O Docker continua recebendo encerramentos externos, portanto a apresentação ainda não é estável. Um segundo host está em avaliação, sem substituir o original. Consulte `docs/CODESPACES-ENCERRAMENTO-DOCKER.md` e `docs/CODESPACES-ACESSO.md`.
 
 A conta disponibilizou somente máquinas de 2 ou 4 núcleos, ambas com 32 GB de disco. A máquina selecionada tem 4 núcleos, 15,6 GiB de RAM utilizável e inicialmente 18,8 GiB livres. Docker e Compose funcionam, mas a checagem de armazenamento não passou. As 14 imagens únicas usadas pelo piloto local somam aproximadamente 25,2 GiB de tamanhos virtuais, antes de considerar compartilhamento de camadas, volumes e margem de operação. Essa soma não equivale a uma medição de ocupação remota, mas impede presumir que o pacote completo caiba.
 
@@ -61,6 +61,9 @@ Verificações reais:
 node manage.mjs smoke apresentacao
 node scripts/Test-CodespacesPortal.mjs apresentacao
 node scripts/test-platform-live.mjs apresentacao
+node scripts/Configure-CodespacesMonitoring.mjs apresentacao
+node scripts/Test-DockerLifecycle.mjs
+node scripts/Test-DockerHostStability.mjs 900
 ```
 
 O último teste cria registros identificados como teste nas aplicações reais, verifica a entrega Chatwoot → API/fila → ERPNext/n8n e revoga a chave temporária. Não envia WhatsApp nem publica em redes sociais. Os testes internos não substituem a verificação separada do HTTPS encaminhado pelo GitHub.
