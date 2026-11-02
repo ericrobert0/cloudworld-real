@@ -73,6 +73,7 @@ test('sondas distinguem rede indisponivel, ferramenta ausente e inicializacao OC
   assert.equal((await probe({type:'dns',host:'app.alpha.localhost'})).state,'local');
   assert.equal((await probe({type:'dns',host:'example.com'},{lookup:async()=>[{address:'192.0.2.1'}]})).state,'up');
   assert.equal((await probe({type:'ping',host:'192.0.2.1'},{command:async()=>{throw Object.assign(Error(),{code:'ENOENT'});}})).state,'unsupported');
+  assert.equal((await probe({type:'ping',host:'127.0.0.1'},{command:async()=>{throw Object.assign(Error('falha'),{stderr:'Operation not permitted'});}})).state,'unsupported');
   if(process.platform==='win32')assert.equal((await probe({type:'ping',host:'192.0.2.1'},{command:async()=>({stdout:'Host de destino inacessivel'})})).state,'down');
   assert.equal((await probe({type:'http',url:'http://127.0.0.1'},{transport:async()=>({status:503})})).state,'down');
   assert.equal((await probe({type:'snmp'},{snmpLoader:async()=>{throw Error();}})).state,'unsupported');

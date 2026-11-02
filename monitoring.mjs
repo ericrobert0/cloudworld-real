@@ -63,7 +63,9 @@ export async function probe(target,{transport=requestApp,lookup=dns.lookup,comma
       });
     }else throw Error('Tipo nao suportado');
     return {state:'up',detail,latencyMs:Date.now()-started};
-  }catch(e){return {state:e.code==='ENOENT'?'unsupported':'down',detail:e.code==='ENOENT'?'Ferramenta de rede ausente':target.type==='snmp'?'Falha SNMPv3 (verifique agente e credenciais)':e.code||e.message,latencyMs:Date.now()-started};}
+  }catch(e){
+    if(['ping','arping'].includes(target.type)&&/operation not permitted|permission denied|cap_net_raw/i.test(String(e.stderr||'')+' '+e.message))return {state:'unsupported',detail:'Sem permissao para usar ICMP/ARP neste ambiente',latencyMs:Date.now()-started};
+    return {state:e.code==='ENOENT'?'unsupported':'down',detail:e.code==='ENOENT'?'Ferramenta de rede ausente':target.type==='snmp'?'Falha SNMPv3 (verifique agente e credenciais)':e.code||e.message,latencyMs:Date.now()-started};}
 }
 export class Monitor{
   constructor(hub){this.hub=hub;this.snapshot={at:null,tenants:[]};this.busy=false;}
