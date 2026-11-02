@@ -15,10 +15,12 @@ Em 02/11/2026, o proprietário autorizou publicar seis acessos no Codespace `lau
 
 Resultado: 18/18 verificações locais de controles e 14/14 verificações HTTPS sem credenciais. Relatórios: `runtime/reports/security-before-publication.json` e `runtime/reports/codespaces-public-http.json`. As verificações não imprimem senhas, cookies nem corpos das respostas protegidas.
 
+O portal passou a executar como UID/GID 61001, sem acesso ao socket Docker, arquivos privados do operador ou variáveis GitHub. Contas e configuração chegam por uma projeção somente para leitura; as sessões têm armazenamento separado. Passaram 64 testes de código, 20 verificações de identidade, sete do portal e 14 de HTTPS após a mudança.
+
 ## Limites antes de receber clientes reais
 
 - Cadastrar e exigir MFA para administradores e identidades compatíveis; o cadastro do segundo fator deve ser realizado pelo responsável.
-- No Codespaces, o portal é executado no ambiente de desenvolvimento sob o usuário do Codespace. Antes de produção, separar sua identidade/processo e permissões das operações Docker, conforme os modelos Linux e a política de menor privilégio. A verificação de containers não certifica essa separação do processo host.
+- A identidade do processo público foi separada do operador no Codespaces e passou em 20 verificações reais. Consulte [o isolamento do portal](PORTAL-IDENTIDADE-ISOLADA.md). O host e a rede continuam compartilhados; produção com clientes diferentes exige ambientes e políticas próprios.
 - Guardar uma cópia recuperável fora do Codespace e manter a chave de exportação separada. A cópia criptografada atual permanece no mesmo host; sua restauração ainda não foi testada.
 - Fazer revisão de segurança independente, acompanhamento de vulnerabilidades/atualizações, proteção contra abuso e definição de disponibilidade, retenção e resposta a incidentes. Os controles básicos verificados não equivalem a uma auditoria dessas áreas.
 - Respeitar cota, suspensão e retenção do Codespaces. Este ambiente serve para apresentação com aplicações reais, não para prometer operação comercial contínua.

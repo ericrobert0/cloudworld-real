@@ -1,6 +1,6 @@
 # CloudWorld — acesso ao ambiente real
 
-**Ambiente em validação:** a consulta pesada do painel foi corrigida, as seis aplicações retomaram e o login real do portal foi confirmado pelo navegador. Passaram 59 testes de código e o fluxo Chatwoot → API/fila → ERPNext/n8n. O endereço atual usa o Codespace `laughing-barnacle-gxpjggg4j6xhvjvg`. Consulte [a correção da consulta](DOCKER-CONSULTA-LEVE.md) e os relatórios para o resultado da observação prolongada.
+**Ambiente em validação:** a consulta pesada do painel foi corrigida, as seis aplicações retomaram e o login real do portal foi confirmado pelo navegador. Passaram 64 testes de código e o fluxo Chatwoot → API/fila → ERPNext/n8n. O endereço atual usa o Codespace `laughing-barnacle-gxpjggg4j6xhvjvg`. Consulte [a correção da consulta](DOCKER-CONSULTA-LEVE.md) e os relatórios para o resultado da observação prolongada.
 
 **Histórico de 02/11 às 15:31 (São Paulo):** antes da correção da consulta, o segundo host também encerrou o Docker. Essa falha permanece documentada em [encerramento do Docker](CODESPACES-ENCERRAMENTO-DOCKER.md). O host original `effective-guacamole-5vqqrwwxrq6xfv54x` foi preservado e permanece separado. A validação atual não equivale a disponibilidade comercial permanente.
 
@@ -14,6 +14,8 @@ Este ambiente executa aplicações reais em um servidor remoto do GitHub Codespa
 O portal permite abrir Atendimento, Gestão, Arquivos e Mídias sociais. Ele não concede ao cliente acesso ao Docker, às chaves da integração ou à administração de outras empresas. Cada ferramenta ainda tem seu próprio login; o SSO precisa ser configurado e validado separadamente.
 
 O portal, Authentik, Chatwoot, Postiz, Nextcloud e ERPNext foram publicados com autorização do proprietário. Operador (8099), editor n8n (18003), bancos, Docker e WAHA permanecem privados. Passaram 18 verificações básicas de proteção e 14 verificações HTTPS sem credenciais, incluindo recusa de dados privados. Veja [os controles e limites de segurança](SEGURANCA-DA-PUBLICACAO.md).
+
+O processo público do portal também passou em 20 verificações de identidade e permissões: ele não pode acessar o Docker, as credenciais ou o ambiente do operador. Detalhes em [isolamento do portal](PORTAL-IDENTIDADE-ISOLADA.md).
 
 ## Ferramentas
 

@@ -1,3 +1,4 @@
+import {readBody} from './read-body.mjs';
 import {IntegrationHub} from './integration.mjs';
 import {Monitor,configureMonitoring,runtimeMonitoring} from './monitoring.mjs';
 import {PortalAccounts} from './portal.mjs';
@@ -7,10 +8,7 @@ import {ssoStatus,requireCentralLogin} from './oidc.mjs';
 import {requestOriginAllowed} from './request-origin.mjs';
 
 const err=(message,status)=>Object.assign(Error(message),{status});
-export async function readBody(req,max=65536){
-  if(!req.headers['content-type']?.startsWith('application/json'))throw err('Content-Type application/json obrigatorio',415);
-  const chunks=[];let size=0;for await(const b of req){size+=b.length;if(size>max)throw err('Corpo excedeu limite',413);chunks.push(b);}try{return JSON.parse(Buffer.concat(chunks).toString());}catch{throw err('JSON invalido',400);}
-}
+export {readBody} from './read-body.mjs';
 export function normalizeWebhook(source,body){
   if(source==='chat'){
     const c=body.contact||body;

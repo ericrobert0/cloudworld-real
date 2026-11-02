@@ -5,7 +5,7 @@ import http from 'node:http';
 import {promisify} from 'node:util';
 import {ROOT,RUNTIME,tenantPath} from './infra.mjs';
 import {atomicJSON} from './integration.mjs';
-import {readBody} from './api.mjs';
+import {readBody} from './read-body.mjs';
 import {PortalOIDC,oidcSettings} from './oidc.mjs';
 import {requestOriginAllowed} from './request-origin.mjs';
 const scrypt=promisify(crypto.scrypt),sha=s=>crypto.createHash('sha256').update(s).digest('hex');
@@ -15,6 +15,9 @@ const read=(file,otherwise)=>fs.existsSync(file)?JSON.parse(fs.readFileSync(file
 export class PortalAccounts{
   constructor(){this.attempts=new Map();this.activeLogins=0;}
   file(id,name){const d=tenantPath(id);if(!fs.existsSync(path.join(d,'tenant.json')))throw fail('Empresa inexistente',404);return path.join(d,name);}
+  oidc(id){return oidcSettings(id);}
+  maintenance(id){return fs.existsSync(path.join(tenantPath(id),'.operation.lock'));}
+  manifest(id){return read(this.file(id,'tenant.json'));}
   users(id){return read(this.file(id,'portal-users.private.json'),[]);}
   list(id){return this.users(id).map(({salt,hash,...u})=>u);}
   async save(id,input){
@@ -40,7 +43,7 @@ export class PortalAccounts{
   limit(key,{max=10,windowMs=600000}={}){const now=Date.now(),prev=this.attempts.get(key),a=prev&&prev.until>now?prev:{count:0,until:now+windowMs};if(++a.count>max)throw fail('Muitas tentativas. Aguarde antes de tentar novamente.',429);this.attempts.set(key,a);if(this.attempts.size>2000){for(const [k,v] of this.attempts)if(v.until<now)this.attempts.delete(k);while(this.attempts.size>2000)this.attempts.delete(this.attempts.keys().next().value);}}
   async login(id,username,password,address='local'){
     if(typeof id!=='string'||!/^[a-z][a-z0-9-]{1,30}$/.test(id)||typeof username!=='string'||typeof password!=='string'||username.length>64||password.length>128)throw fail('Acesso invalido',401);
-    if(oidcSettings(id)?.requireSso)throw fail('Use o botao de login central para esta empresa',403);
+    if(this.oidc(id)?.requireSso)throw fail('Use o botao de login central para esta empresa',403);
     if(this.activeLogins>=4)throw fail('Muitos acessos simultaneos. Tente novamente em instantes.',429);
     this.limit(address+':'+id+':'+username.toLowerCase());
     let u;try{u=this.users(id).find(u=>u.username===username.toLowerCase());}catch{}
@@ -59,7 +62,7 @@ export class PortalAccounts{
     const [,id,token]=m;let all;try{all=this.sessions(id);}catch{throw fail('Entre na sua conta',401);}
     const s=all.find(s=>s.hash===sha(token)),now=Date.now(),u=s&&this.users(id).find(u=>u.id===s.userId);
     if(!s||s.expires<=now||s.lastAt<now-1800000||!u?.enabled||s.version!==u.version)throw fail('Sessao encerrada. Entre novamente.',401);
-    if(s.authSource!=='oidc'&&oidcSettings(id)?.requireSso)throw fail('Use o login central para continuar.',401);
+    if(s.authSource!=='oidc'&&this.oidc(id)?.requireSso)throw fail('Use o login central para continuar.',401);
     if(now-s.lastAt>60000){s.lastAt=now;atomicJSON(this.file(id,'portal-sessions.private.json'),all);}
     return {tenant:id,user:u,authSource:s.authSource,subject:s.subject,issuer:s.issuer};
   }
@@ -103,8 +106,8 @@ export function createPortal({accounts=new PortalAccounts(),origin='http://127.0
       }
       if(req.method==='GET'&&req.url==='/api/me'){
         const context=accounts.authenticate(cookie);try{await oidc.verifySession(context);}catch(e){if(e.status===403)accounts.logout(cookie);throw e;}
-        const {tenant,user}=context,t=read(accounts.file(tenant,'tenant.json'));
-        json(res,200,{company:tenant,authSource:context.authSource==='oidc'?'oidc':'password',maintenance:fs.existsSync(path.join(tenantPath(tenant),'.operation.lock')),user:{name:user.name,username:user.username},apps:user.apps.filter(a=>customerApps[a]&&t.urls[a]).map(a=>({id:a,name:customerApps[a],url:t.urls[a]}))});return;
+        const {tenant,user}=context,t=accounts.manifest(tenant);
+        json(res,200,{company:tenant,authSource:context.authSource==='oidc'?'oidc':'password',maintenance:accounts.maintenance(tenant),user:{name:user.name,username:user.username},apps:user.apps.filter(a=>customerApps[a]&&t.urls[a]).map(a=>({id:a,name:customerApps[a],url:t.urls[a]}))});return;
       }
       res.writeHead(404);res.end();
     }catch(e){json(res,e.status||400,{error:e.status?e.message:'Nao foi possivel concluir a solicitacao'});}

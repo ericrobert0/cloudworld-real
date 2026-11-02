@@ -1,4 +1,5 @@
 runtime/
+.portal-service/
 reports/private/
 *.env
 node_modules/

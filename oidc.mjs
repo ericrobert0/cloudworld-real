@@ -17,7 +17,8 @@ export class PortalOIDC{
   constructor(accounts,{origin,transport=requestApp,clock=()=>Date.now()}={}){this.accounts=accounts;this.origin=origin;this.transport=transport;this.clock=clock;this.pending=new Map();this.active=0;this.statusCache=new Map();}
   async verifySession(context){
     if(context.authSource!=='oidc')return;
-    const {tenant,user}=context,c=oidcSettings(tenant),identity=user.identity;
+    if(this.accounts.verifyCentral){await this.accounts.verifyCentral(context);return;}
+    const {tenant,user}=context,c=this.accounts.oidc(tenant),identity=user.identity;
     if(!c?.enabled||c.issuer!==context.issuer||identity?.subject!==context.subject||!Number.isInteger(identity?.directoryId))throw fail('Vinculo central indisponivel',403);
     const key=tenant+':'+user.id+':'+user.version,cache=this.statusCache.get(key);if(cache&&this.clock()-cache.at<30000){if(!cache.active)throw fail('Conta central suspensa ou desvinculada',403);return;}
     let settings;try{settings=JSON.parse(fs.readFileSync(this.accounts.file(tenant,'integrations.private.json')));}catch{throw fail('Identidade central indisponivel',503);}const token=settings.connectors?.auth?.token;if(!token)throw fail('Identidade central indisponivel',503);
@@ -28,7 +29,7 @@ export class PortalOIDC{
     if(!active)throw fail('Conta central suspensa ou desvinculada',403);
   }
   async configuration(id){
-    const c=oidcSettings(id),t=JSON.parse(fs.readFileSync(this.accounts.file(id,'tenant.json')));
+    const c=this.accounts.oidc(id),t=this.accounts.manifest(id);
     if(!c?.enabled||!c.clientId||!c.clientSecret)throw fail('Login central nao configurado',409);
     const expected=new URL('/application/o/cloudworld-portal/',t.urls.auth).href;
     if(c.issuer!==expected||!expected.startsWith('https:')||c.redirectUri!==this.origin+'/auth/callback')throw fail('Configuracao do login central invalida',409);
