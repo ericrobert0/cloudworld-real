@@ -1,6 +1,6 @@
 # Codespaces — candidato para apresentação real sem cartão
 
-Estado em 01/11/2026: fontes transferidos para o repositório privado `ericrobert0/cloudworld-real` e um Codespace criado. As dependências Node foram instaladas e os 53 testes passaram na máquina remota. A instalação Docker de Authentik, Chatwoot, ERPNext, Nextcloud, Postiz e n8n terminou com código zero. Contas novas e seis conectores foram configurados. A validação anterior aprovou 44 verificações de serviços, seis do portal e 17 do fluxo Chatwoot → API/fila → ERPNext/n8n. Nenhuma porta pública foi habilitada.
+Estado em 02/11/2026: seis aplicações reais instaladas e contas próprias configuradas. Passaram 53 testes de código e, durante janelas em funcionamento, 44 verificações dos serviços, seis do portal e 17 da integração. As seis portas autorizadas foram publicadas; operação e editor n8n permanecem privados. O Docker continua recebendo encerramentos externos, portanto a apresentação ainda não é estável. Consulte `docs/CODESPACES-ENCERRAMENTO-DOCKER.md` e `docs/CODESPACES-ACESSO.md`.
 
 A conta disponibilizou somente máquinas de 2 ou 4 núcleos, ambas com 32 GB de disco. A máquina selecionada tem 4 núcleos, 15,6 GiB de RAM utilizável e inicialmente 18,8 GiB livres. Docker e Compose funcionam, mas a checagem de armazenamento não passou. As 14 imagens únicas usadas pelo piloto local somam aproximadamente 25,2 GiB de tamanhos virtuais, antes de considerar compartilhamento de camadas, volumes e margem de operação. Essa soma não equivale a uma medição de ocupação remota, mas impede presumir que o pacote completo caiba.
 
@@ -72,4 +72,7 @@ Portas: operação 8099, portal da empresa 8100, Authentik 18001, Chatwoot 18002
 - https://docs.github.com/en/billing/concepts/product-billing/github-codespaces
 - https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace
 - https://docs.github.com/en/codespaces/about-codespaces/understanding-the-codespace-lifecycle
+
+
+As operações Compose neste Codespace usam no máximo duas chamadas simultâneas ao engine, conforme o mecanismo oficial COMPOSE_PARALLEL_LIMIT: https://docs.docker.com/compose/how-tos/environment-variables/envvars/ . Isso reduz concorrência, mas não resolve sinais externos de encerramento.
 

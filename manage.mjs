@@ -16,7 +16,9 @@ function checkStorage(info){
 
 function run(args,{capture=false,output,input}={}) {
   return new Promise((resolve,reject)=>{
-    const p=spawn('docker',args,{windowsHide:true,stdio:[input?'pipe':'ignore',capture||output?'pipe':'inherit','pipe']});
+    // Limit concurrent Engine calls in the small presentation host.
+    const env=process.env.CODESPACES==='true'?{...process.env,COMPOSE_PARALLEL_LIMIT:process.env.COMPOSE_PARALLEL_LIMIT==='1'?'1':'2'}:process.env;
+    const p=spawn('docker',args,{env,windowsHide:true,stdio:[input?'pipe':'ignore',capture||output?'pipe':'inherit','pipe']});
     let stdout='',stderr=''; if(capture) p.stdout.on('data',d=>stdout+=d);
     p.stderr.on('data',d=>{stderr+=d;if(!capture)process.stderr.write(d);});
     const streams=[];
