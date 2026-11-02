@@ -7,6 +7,7 @@ import {ROOT,RUNTIME,secret,tenantPath} from './infra.mjs';
 import {catalog,tenants as listTenants} from './service.mjs';
 import {createControlAPI} from './api.mjs';
 import {loadJobHistory,saveJobHistory} from './operations.mjs';
+import {ContainerEvents,DockerEventStream,projectContainers} from './docker-events.mjs';
 fs.mkdirSync(RUNTIME,{recursive:true});
 const keyPath=path.join(RUNTIME,'panel-password.txt');
 if(!fs.existsSync(keyPath))fs.writeFileSync(keyPath,secret(),{mode:0o600});
@@ -19,13 +20,19 @@ if(process.env.CW_PANEL_ORIGIN&&panelOrigin.protocol!=='https:')throw Error('Ori
 const proxyHost=process.env.CW_PANEL_PROXY_HOST||null;
 if(proxyHost&&(panelOrigin.protocol!=='https:'||proxyHost!==`localhost:${port}`))throw Error('Alias do proxy deve corresponder a porta local e exigir HTTPS.');
 let busy=false;const jobs=loadJobHistory();let engine={at:null,containers:[],error:'Aguardando consulta Docker'};
+const lifecycle=new ContainerEvents();let engineQuery=false,eventRefresh=null;
+const eventStream=new DockerEventStream({tracker:lifecycle,onUpdate:()=>{
+  engine={...engine,containers:lifecycle.decorate(engine.containers),events:lifecycle.status()};
+  if(!eventRefresh){eventRefresh=setTimeout(()=>{eventRefresh=null;refreshEngine();},5000);eventRefresh.unref();}
+}});
 function refreshEngine(){
+  if(engineQuery)return;engineQuery=true;
   const p=spawn('docker',['ps','-a','--format','{{json .}}'],{windowsHide:true});let out='',err='';
-  const timer=setTimeout(()=>p.kill(),4000);p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>err+=d);
-  p.on('error',e=>{clearTimeout(timer);engine={at:new Date().toISOString(),containers:[],error:e.message};});
-  p.on('close',code=>{clearTimeout(timer);try{engine={at:new Date().toISOString(),containers:code===0?out.split('\n').filter(Boolean).map(s=>JSON.parse(s)).filter(c=>c.Names?.startsWith('vw-')):[],error:code===0?null:err.slice(-1000)||'Docker nao respondeu'};}catch(e){engine.error=e.message;}});
+  const timer=setTimeout(()=>p.kill(),8000);p.stdout.on('data',d=>{if(out.length<2*1024*1024)out+=d;else p.kill();});p.stderr.on('data',d=>err=(err+d).slice(-2000));
+  p.on('error',e=>{clearTimeout(timer);engineQuery=false;engine={at:new Date().toISOString(),containers:[],error:e.message,events:lifecycle.status()};});
+  p.on('close',code=>{clearTimeout(timer);engineQuery=false;try{engine={at:new Date().toISOString(),containers:lifecycle.decorate(code===0?projectContainers(out.split('\n').filter(Boolean).map(s=>JSON.parse(s))):[]),error:code===0?null:err.slice(-1000)||'Docker nao respondeu',events:lifecycle.status()};}catch(e){engine={at:new Date().toISOString(),containers:[],error:e.message,events:lifecycle.status()};}});
 }
-refreshEngine();setInterval(refreshEngine,15000).unref();
+refreshEngine();setInterval(refreshEngine,15000).unref();eventStream.start();
 const control=createControlAPI({listTenants,engine:()=>engine,origin});
 const page=fs.readFileSync(path.join(ROOT,'public','index.html'),'utf8').replace('/* PANEL_APP */',()=>fs.readFileSync(path.join(ROOT,'public','panel.js'),'utf8'));
 const staticAssets={
@@ -70,3 +77,6 @@ const server=http.createServer(async(req,res)=>{
   res.writeHead(404);res.end();
 });
 server.listen(port,'127.0.0.1',()=>console.log(`Painel: ${origin}\nUsuario: admin\nSenha: arquivo ${keyPath}`));
+for(const signal of ['SIGTERM','SIGINT'])process.once(signal,()=>{
+  eventStream.close();clearTimeout(eventRefresh);control.close();server.closeAllConnections();server.close(()=>process.exit(0));
+});

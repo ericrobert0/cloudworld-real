@@ -1,5 +1,5 @@
 import {IntegrationHub} from './integration.mjs';
-import {Monitor,configureMonitoring} from './monitoring.mjs';
+import {Monitor,configureMonitoring,runtimeMonitoring} from './monitoring.mjs';
 import {PortalAccounts} from './portal.mjs';
 import {AlertStore,readiness} from './operations.mjs';
 import {NotificationDelivery,notificationSettings,configureNotifications} from './notifications.mjs';
@@ -55,7 +55,7 @@ export function createControlAPI({listTenants,engine,origin,hub=new IntegrationH
         if(!sourceId)throw err('ID do evento de origem obrigatorio',400);
         json(res,202,hub.enqueue(id,input,source+':'+body.event+':'+sourceId));
       }
-      else if(resource==='monitoring'&&req.method==='GET'){onlyOperator();json(res,200,{at:monitor.snapshot.at,dockerError:monitor.snapshot.dockerError,...monitor.snapshot.tenants.find(t=>t.id===id)});}
+      else if(resource==='monitoring'&&req.method==='GET'){onlyOperator();const current=engine();json(res,200,{at:monitor.snapshot.at,...monitor.snapshot.tenants.find(t=>t.id===id),dockerError:current.error,...runtimeMonitoring(listTenants().find(t=>t.id===id),current)});}
       else if(resource==='monitoring'&&req.method==='PUT'){onlyOperator();json(res,200,configureMonitoring(id,(await readBody(req)).targets));}
       else if(resource==='portal/users'&&req.method==='GET'){onlyOperator();json(res,200,accounts.list(id));}
       else if(resource==='portal/users'&&req.method==='POST'){onlyOperator();json(res,200,await accounts.save(id,await readBody(req)));}

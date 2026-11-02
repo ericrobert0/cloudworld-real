@@ -9,11 +9,20 @@ import {atomicJSON,requestApp} from './integration.mjs';
 const exec=promisify(execFile);
 const hostValid=h=>typeof h==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9.:-]{0,180}$/.test(h);
 export function containerPhase(c){
+  if(c.State==='running'&&c.Phase==='stopping')return 'stopping';
   if(c.State==='restarting')return 'restarting';
   if(c.State==='dead'||/unhealthy/.test(c.Status||''))return 'failed';
   if(c.State==='running')return /health: starting/.test(c.Status||'')?'starting':'running';
   if(c.State==='exited')return /Exited \(0\)/.test(c.Status||'')?'stopped':'failed';
   return ['created','paused','removing'].includes(c.State)?c.State:'unknown';
+}
+export function runtimeMonitoring(tenant,engine){
+  const project=tenant?.project;
+  return {
+    containers:project?engine.containers.filter(c=>c.Project===project).map(c=>({name:c.Names,state:containerPhase(c),detail:c.Phase==='stopping'?'Sinal de encerramento observado; aguardando confirmacao da parada.':c.Status})):[],
+    events:project?(engine.events?.recent||[]).filter(e=>e.project===project):[],
+    eventStream:engine.events?{connected:engine.events.connected,error:engine.events.error,lastEventAt:engine.events.lastEventAt}:null
+  };
 }
 export function configureMonitoring(id,targets){
   if(!Array.isArray(targets)||targets.length>20)throw Error('Maximo de 20 alvos');
@@ -64,7 +73,8 @@ export class Monitor{
       const results=[];
       for(const t of tenants){
         const maintenance=fs.existsSync(path.join(tenantPath(t.id),'.operation.lock'));
-        if(maintenance){results.push({id:t.id,maintenance:true,checks:[],connectors:[],containers:engine.containers.filter(c=>c.Names?.startsWith(t.project+'-')).map(c=>({name:c.Names,state:containerPhase(c),detail:c.Status}))});continue;}
+        const {containers,events}=runtimeMonitoring(t,engine);
+        if(maintenance){results.push({id:t.id,maintenance:true,checks:[],connectors:[],containers,events});continue;}
         const checks=[];const add=async(name,target)=>checks.push({name,...await probe(target)});
         await Promise.all(Object.entries(t.apiUrls||t.urls).map(([app,url])=>add(app,{type:'http',url:url+({postiz:'/api/auth/can-register',n8n:'/healthz/readiness',cloud:'/status.php',auth:'/-/health/ready/'}[app]||'/')})));
         const f=path.join(tenantPath(t.id),'monitoring.private.json'),targets=fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')):[];
@@ -74,9 +84,9 @@ export class Monitor{
           if(!c.enabled||!c.configured){connectors.push({app,state:'not-configured'});continue;}
           try{const result=await this.hub.invoke(t.id,app,'check');connectors.push({app,state:result.authentication==='verified'?'authenticated':'reachable',detail:result.authentication});}catch(e){connectors.push({app,state:'failed',detail:e.message});}
         }
-        results.push({id:t.id,checks,connectors,containers:engine.containers.filter(c=>c.Names?.startsWith(t.project+'-')).map(c=>({name:c.Names,state:containerPhase(c),detail:c.Status}))});
+        results.push({id:t.id,checks,connectors,containers,events});
       }
-      this.snapshot={at:new Date().toISOString(),dockerError:engine.error,tenants:results};
+      this.snapshot={at:new Date().toISOString(),dockerError:engine.error,eventStream:engine.events?{connected:engine.events.connected,error:engine.events.error,lastEventAt:engine.events.lastEventAt}:null,tenants:results};
     }finally{this.busy=false;}
   }
 }
