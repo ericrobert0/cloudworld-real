@@ -17,7 +17,9 @@ function checkStorage(info){
 function run(args,{capture=false,output,input}={}) {
   return new Promise((resolve,reject)=>{
     // Limit concurrent Engine calls in the small presentation host.
-    const env=process.env.CODESPACES==='true'?{...process.env,COMPOSE_PARALLEL_LIMIT:process.env.COMPOSE_PARALLEL_LIMIT==='1'?'1':'2'}:process.env;
+    // Stopping writers releases memory; serial 90-second grace periods made
+    // backups unnecessarily long. Keep startup bounded while stopping four at once.
+    const env=process.env.CODESPACES==='true'?{...process.env,COMPOSE_PARALLEL_LIMIT:args[0]==='compose'&&args.includes('stop')?'4':process.env.COMPOSE_PARALLEL_LIMIT==='1'?'1':'2'}:process.env;
     const p=spawn('docker',args,{env,windowsHide:true,stdio:[input?'pipe':'ignore',capture||output?'pipe':'inherit','pipe']});
     let stdout='',stderr=''; if(capture) p.stdout.on('data',d=>stdout+=d);
     p.stderr.on('data',d=>{stderr+=d;if(!capture)process.stderr.write(d);});
@@ -191,7 +193,7 @@ async function restoreTest(backupDir) {
   const c={name:project,services:{},volumes:{}};
   for(const [name,s] of Object.entries(original.services).filter(([n,s])=>n.endsWith('-db')&&(s.environment?.POSTGRES_DB||s.environment?.MARIADB_ROOT_PASSWORD))) {
     const pg=!!s.environment.POSTGRES_DB;
-    c.services[name]={image:s.image,environment:pg?{POSTGRES_USER:'restore_admin',POSTGRES_PASSWORD:'restore-temporary-private',POSTGRES_DB:'restore_maintenance'}:s.environment,volumes:[`${name}:${pg?'/var/lib/postgresql/data':'/var/lib/mysql'}`],healthcheck:pg?{test:['CMD-SHELL','pg_isready -U restore_admin -d restore_maintenance'],interval:'5s',retries:30}:s.healthcheck,networks:['default']};
+    c.services[name]={image:s.image,environment:pg?{POSTGRES_USER:'restore_admin',POSTGRES_PASSWORD:'restore-temporary-private',POSTGRES_DB:'restore_maintenance'}:s.environment,volumes:[`${name}:${pg?'/var/lib/postgresql/data':'/var/lib/mysql'}`],healthcheck:pg?{test:['CMD-SHELL','pg_isready -h 127.0.0.1 -U restore_admin -d restore_maintenance'],interval:'5s',retries:30}:s.healthcheck,networks:['default']};
     c.volumes[name]={};
   }
   fs.mkdirSync(work,{recursive:true});writeJSON(path.join(work,'compose.json'),c);

@@ -34,7 +34,7 @@ export function createTenant(id, domain=`${id}.localhost`, port=8443, options={}
     return s[name];
   }
   function pg(name,user,pass,image='postgres:16-alpine',db=user) {
-    svc(name,image,[name],{environment:{POSTGRES_USER:user,POSTGRES_PASSWORD:pass,POSTGRES_DB:db},volumes:[`${name}:/var/lib/postgresql/data`],healthcheck:health(`pg_isready -U ${user} -d ${db}`),mem_limit:'512m'});
+    svc(name,image,[name],{environment:{POSTGRES_USER:user,POSTGRES_PASSWORD:pass,POSTGRES_DB:db},volumes:[`${name}:/var/lib/postgresql/data`],healthcheck:health(`pg_isready -h 127.0.0.1 -U ${user} -d ${db}`),mem_limit:'512m'});
   }
   function redis(name,net=name) { svc(name,'redis:7.2-alpine',[net],{command:['redis-server','--appendonly','yes'],volumes:[`${name}:/data`],healthcheck:health('redis-cli ping | grep -q PONG'),mem_limit:'256m'}); }
   pg('auth-db',`auth_${id.replaceAll('-','_')}`,passwords.auth);

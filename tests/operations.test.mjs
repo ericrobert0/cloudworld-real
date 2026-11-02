@@ -11,6 +11,16 @@ const {AlertStore,readiness,saveJobHistory,loadJobHistory}=await import('../oper
 const {exportBackup,importBackup,loadBackupKey,verifyExport}=await import('../backup-store.mjs');
 createTenant('alpha');
 
+test('exportacao valida em pasta local nao aprova copia fora do servidor nem agenda Windows no Codespaces',()=>{
+  const t=createTenant('charlie','charlie.localhost',11443),dir=path.join(RUNTIME,'tenants','charlie');atomicJSON(path.join(dir,'tenant.json'),{...t,local:false,domain:'temporary.app.github.dev',runtime:'codespaces'});
+  const dest=path.join(RUNTIME,'same-host'),stamp=new Date().toISOString();fs.mkdirSync(dest);
+  atomicJSON(path.join(RUNTIME,'backups','charlie','one','manifest.json'),{client:'charlie',createdAt:stamp,hashes:{}});
+  atomicJSON(path.join(RUNTIME,'backup-policy.private.json'),{enabled:true,externalDirectory:dest});
+  atomicJSON(path.join(RUNTIME,'backup-jobs','charlie.json'),{backupAt:stamp,export:{ok:true,targetId:crypto.createHash('sha256').update(path.resolve(dest)).digest('hex')}});
+  const items=readiness('charlie').items;assert.equal(items.find(i=>i.id==='external').ok,false);assert.equal(items.find(i=>i.id==='schedule').ok,false);assert.equal(items.find(i=>i.id==='domain').ok,false);assert.match(items.find(i=>i.id==='hosting').detail,/Codespaces/);
+  fs.unlinkSync(path.join(RUNTIME,'backup-policy.private.json'));
+});
+
 test('carga local exige ambos os perfis recentes e a mesma configuracao, sem aprovar capacidade comercial',()=>{
   const compose=path.join(RUNTIME,'tenants','alpha','compose.json'),hash=crypto.createHash('sha256').update(fs.readFileSync(compose)).digest('hex'),dir=path.join(RUNTIME,'reports'),record={at:new Date().toISOString(),finishedAt:new Date().toISOString(),tenant:'alpha',ok:true,phase:'complete',composeSha256:hash};
   const status=()=>readiness('alpha').items.find(i=>i.id==='local-load').ok;atomicJSON(path.join(dir,'load-local-1.json'),record);assert.equal(status(),false);atomicJSON(path.join(dir,'load-bursts-1.json'),{...record,ok:false});assert.equal(status(),false);atomicJSON(path.join(dir,'load-bursts-1.json'),record);assert.equal(status(),true);assert.equal(readiness('alpha').items.find(i=>i.id==='capacity').ok,false);fs.appendFileSync(compose,'\n');assert.equal(status(),false);

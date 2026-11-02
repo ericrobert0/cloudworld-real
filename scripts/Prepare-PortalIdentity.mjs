@@ -51,9 +51,12 @@ export function publishProjection(id,value){
   const dest=path.join(portalRoot,'config',id+'.json'),tmp=dest+'.tmp';
   fs.writeFileSync(tmp,JSON.stringify(value),{mode:0o640});fs.chmodSync(tmp,0o640);fs.renameSync(tmp,dest);
 }
-export function portalCommand(origin,proxyHost){
-  return ['-n','setpriv','--reuid='+portalUid,'--regid='+portalGid,'--clear-groups','--inh-caps=-all','--bounding-set=-all','--no-new-privs',
+export function portalNamespaceArgs(origin,proxyHost,command=[process.execPath,'--max-old-space-size=128',path.join(ROOT,'scripts','Serve-IsolatedPortal.mjs')]){
+  return ['--mount','--pid','--fork','--mount-proc','--','setpriv','--reuid='+portalUid,'--regid='+portalGid,'--clear-groups','--inh-caps=-all','--bounding-set=-all','--no-new-privs',
     'env','-i','PATH=/usr/local/bin:/usr/bin:/bin','HOME=/nonexistent','NODE_ENV=production',
     'CW_ISOLATED_PORTAL_ROOT='+portalRoot,'CW_PORTAL_ORIGIN='+origin,'CW_PORTAL_PROXY_HOST='+proxyHost,
-    process.execPath,'--max-old-space-size=128',path.join(ROOT,'scripts','Serve-IsolatedPortal.mjs')];
+    ...command];
+}
+export function portalCommand(origin,proxyHost){
+  return ['-n',process.execPath,path.join(ROOT,'scripts','Launch-PortalNamespace.mjs'),origin,proxyHost];
 }

@@ -1,0 +1,801 @@
+{
+  "at": "2026-11-02T22:00:51.154Z",
+  "tenant": "apresentacao",
+  "code": {
+    "at": "2026-11-02T21:56:29.704Z",
+    "total": 69,
+    "passed": 69,
+    "failed": 0
+  },
+  "recovery": {
+    "at": "2026-11-02T21:18:09.379Z",
+    "passed": 48,
+    "total": 48,
+    "checks": [
+      {
+        "name": "Backup SHA256 e exportacao AES-GCM",
+        "ok": true
+      },
+      {
+        "name": "Copia criptografada importada e conferida",
+        "ok": true
+      },
+      {
+        "name": "auth-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "auth-db: dados recuperados e ausentes na outra copia",
+        "ok": true
+      },
+      {
+        "name": "auth-db: senhas proprias funcionam e cruzadas falham",
+        "ok": true
+      },
+      {
+        "name": "auth-db: redes internas bloqueiam acesso entre copias",
+        "ok": true
+      },
+      {
+        "name": "chat-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "chat-db: dados recuperados e ausentes na outra copia",
+        "ok": true
+      },
+      {
+        "name": "chat-db: senhas proprias funcionam e cruzadas falham",
+        "ok": true
+      },
+      {
+        "name": "chat-db: redes internas bloqueiam acesso entre copias",
+        "ok": true
+      },
+      {
+        "name": "n8n-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "n8n-db: dados recuperados e ausentes na outra copia",
+        "ok": true
+      },
+      {
+        "name": "n8n-db: senhas proprias funcionam e cruzadas falham",
+        "ok": true
+      },
+      {
+        "name": "n8n-db: redes internas bloqueiam acesso entre copias",
+        "ok": true
+      },
+      {
+        "name": "postiz-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "postiz-db: dados recuperados e ausentes na outra copia",
+        "ok": true
+      },
+      {
+        "name": "postiz-db: senhas proprias funcionam e cruzadas falham",
+        "ok": true
+      },
+      {
+        "name": "postiz-db: redes internas bloqueiam acesso entre copias",
+        "ok": true
+      },
+      {
+        "name": "temporal-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "temporal-db: dados recuperados e ausentes na outra copia",
+        "ok": true
+      },
+      {
+        "name": "temporal-db: senhas proprias funcionam e cruzadas falham",
+        "ok": true
+      },
+      {
+        "name": "temporal-db: redes internas bloqueiam acesso entre copias",
+        "ok": true
+      },
+      {
+        "name": "cloud-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "cloud-db: dados recuperados e ausentes na outra copia",
+        "ok": true
+      },
+      {
+        "name": "cloud-db: senhas proprias funcionam e cruzadas falham",
+        "ok": true
+      },
+      {
+        "name": "cloud-db: redes internas bloqueiam acesso entre copias",
+        "ok": true
+      },
+      {
+        "name": "erp-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "erp-db: dados recuperados e ausentes na outra copia",
+        "ok": true
+      },
+      {
+        "name": "erp-db: senhas proprias funcionam e cruzadas falham",
+        "ok": true
+      },
+      {
+        "name": "erp-db: redes internas bloqueiam acesso entre copias",
+        "ok": true
+      },
+      {
+        "name": "auth-data.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "auth-templates.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "caddy-config.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "caddy-data.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "chat-redis.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "chat-storage.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "cloud-data.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "cloud-redis.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "erp-cache.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "erp-logs.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "erp-queue.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "erp-sites.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "n8n-data.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "postiz-config.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "postiz-redis.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "postiz-uploads.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "waha-media.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      },
+      {
+        "name": "waha-sessions.tgz: arquivos extraidos em volume exclusivo",
+        "ok": true
+      }
+    ],
+    "backupAt": "2026-11-02T21:01:35.789Z",
+    "temporaryResourcesRemoved": true,
+    "scope": "Importacao da copia AES-GCM, sete bancos reais e volumes; credenciais e redes de duas copias temporarias. Nao certifica duas empresas completas nem interfaces das aplicacoes restauradas."
+  },
+  "services": {
+    "at": "2026-11-02T21:46:12.967Z",
+    "passed": 44,
+    "total": 44,
+    "checks": [
+      {
+        "name": "auth-db: SQL",
+        "ok": true
+      },
+      {
+        "name": "chat-db: SQL",
+        "ok": true
+      },
+      {
+        "name": "n8n-db: SQL",
+        "ok": true
+      },
+      {
+        "name": "postiz-db: SQL",
+        "ok": true
+      },
+      {
+        "name": "temporal-db: SQL",
+        "ok": true
+      },
+      {
+        "name": "cloud-db: SQL",
+        "ok": true
+      },
+      {
+        "name": "erp-db: SQL",
+        "ok": true
+      },
+      {
+        "name": "auth: gateway interno",
+        "ok": true
+      },
+      {
+        "name": "chat: gateway interno",
+        "ok": true
+      },
+      {
+        "name": "n8n: gateway interno",
+        "ok": true
+      },
+      {
+        "name": "postiz: gateway interno",
+        "ok": true
+      },
+      {
+        "name": "cloud: gateway interno",
+        "ok": true
+      },
+      {
+        "name": "erp: gateway interno",
+        "ok": true
+      },
+      {
+        "name": "auth-db: estado",
+        "ok": true
+      },
+      {
+        "name": "auth: estado",
+        "ok": true
+      },
+      {
+        "name": "auth-worker: estado",
+        "ok": true
+      },
+      {
+        "name": "chat-db: estado",
+        "ok": true
+      },
+      {
+        "name": "chat-redis: estado",
+        "ok": true
+      },
+      {
+        "name": "chat-init: estado",
+        "ok": true
+      },
+      {
+        "name": "chat: estado",
+        "ok": true
+      },
+      {
+        "name": "chat-worker: estado",
+        "ok": true
+      },
+      {
+        "name": "n8n-db: estado",
+        "ok": true
+      },
+      {
+        "name": "n8n: estado",
+        "ok": true
+      },
+      {
+        "name": "postiz-db: estado",
+        "ok": true
+      },
+      {
+        "name": "temporal-db: estado",
+        "ok": true
+      },
+      {
+        "name": "postiz-redis: estado",
+        "ok": true
+      },
+      {
+        "name": "temporal: estado",
+        "ok": true
+      },
+      {
+        "name": "temporal-init: estado",
+        "ok": true
+      },
+      {
+        "name": "postiz: estado",
+        "ok": true
+      },
+      {
+        "name": "cloud-db: estado",
+        "ok": true
+      },
+      {
+        "name": "cloud-redis: estado",
+        "ok": true
+      },
+      {
+        "name": "cloud: estado",
+        "ok": true
+      },
+      {
+        "name": "cloud-cron: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-db: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-cache: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-queue: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-config: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-init: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-backend: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-websocket: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-worker: estado",
+        "ok": true
+      },
+      {
+        "name": "erp-scheduler: estado",
+        "ok": true
+      },
+      {
+        "name": "erp: estado",
+        "ok": true
+      },
+      {
+        "name": "ingress: estado",
+        "ok": true
+      }
+    ]
+  },
+  "portal": {
+    "at": "2026-11-02T21:46:16.049Z",
+    "passed": 7,
+    "total": 7,
+    "checks": [
+      {
+        "name": "Portal real responde e protege dados sem sessao",
+        "ok": true
+      },
+      {
+        "name": "Login recusa origem incorreta",
+        "ok": true
+      },
+      {
+        "name": "Login real cria sessao HttpOnly, Secure e SameSite",
+        "ok": true
+      },
+      {
+        "name": "Proxy HTTPS aceita somente fetch same-origin e preserva a protecao da sessao",
+        "ok": true
+      },
+      {
+        "name": "Cliente recebe quatro ferramentas da sua empresa com HTTPS",
+        "ok": true
+      },
+      {
+        "name": "Portal recusa administracao e sessao de outra empresa",
+        "ok": true
+      },
+      {
+        "name": "Logout revoga a sessao real",
+        "ok": true
+      }
+    ]
+  },
+  "https": {
+    "at": "2026-11-02T21:46:18.432Z",
+    "passed": 14,
+    "total": 14,
+    "checks": [
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      },
+      {
+        "ok": true
+      }
+    ]
+  },
+  "integration": {
+    "at": "2026-11-02T21:46:33.147Z",
+    "passed": 17,
+    "total": 17,
+    "checks": [
+      {
+        "name": "Painel CloudWorld publicado",
+        "ok": true
+      },
+      {
+        "name": "API interna auth",
+        "ok": true
+      },
+      {
+        "name": "API interna chat",
+        "ok": true
+      },
+      {
+        "name": "API interna erp",
+        "ok": true
+      },
+      {
+        "name": "API interna cloud",
+        "ok": true
+      },
+      {
+        "name": "API interna postiz",
+        "ok": true
+      },
+      {
+        "name": "API interna n8n",
+        "ok": true
+      },
+      {
+        "name": "Criacao e isolamento de permissoes da chave",
+        "ok": true
+      },
+      {
+        "name": "n8n chama API CloudWorld pela rede interna",
+        "ok": true
+      },
+      {
+        "name": "Pasta de teste no Nextcloud",
+        "ok": true
+      },
+      {
+        "name": "Captura local e fluxos ERP + n8n ativos",
+        "ok": true
+      },
+      {
+        "name": "Contato de teste criado na API Chatwoot",
+        "ok": true
+      },
+      {
+        "name": "Contato capturado e entregue ao ERP e n8n",
+        "ok": true
+      },
+      {
+        "name": "ERP reconhece contato sem duplicar cliente",
+        "ok": true
+      },
+      {
+        "name": "Webhook n8n rejeita credencial incorreta",
+        "ok": true
+      },
+      {
+        "name": "Webhook n8n validado por entrega real",
+        "ok": true
+      },
+      {
+        "name": "Chave temporaria revogada",
+        "ok": true
+      }
+    ]
+  },
+  "portalIdentity": {
+    "at": "2026-11-02T21:46:12.885Z",
+    "passed": 24,
+    "total": 24,
+    "checks": [
+      {
+        "name": "dedicatedUid",
+        "ok": true
+      },
+      {
+        "name": "noExtraGroups",
+        "ok": true
+      },
+      {
+        "name": "privatePidNamespace",
+        "ok": true
+      },
+      {
+        "name": "hostProcessesHidden",
+        "ok": true
+      },
+      {
+        "name": "noGithubEnvironment",
+        "ok": true
+      },
+      {
+        "name": "noNewPrivileges",
+        "ok": true
+      },
+      {
+        "name": "noCapabilities",
+        "ok": true
+      },
+      {
+        "name": "panelPasswordDenied",
+        "ok": true
+      },
+      {
+        "name": "databaseSecretsDenied",
+        "ok": true
+      },
+      {
+        "name": "integrationSecretsDenied",
+        "ok": true
+      },
+      {
+        "name": "operatorEnvironmentDenied",
+        "ok": true
+      },
+      {
+        "name": "gitConfigurationDenied",
+        "ok": true
+      },
+      {
+        "name": "sourceReadOnly",
+        "ok": true
+      },
+      {
+        "name": "configReadOnly",
+        "ok": true
+      },
+      {
+        "name": "sessionStorageWritable",
+        "ok": true
+      },
+      {
+        "name": "noConnectorCredentials",
+        "ok": true
+      },
+      {
+        "name": "dockerSocketDenied",
+        "ok": true
+      },
+      {
+        "name": "publicProcessUsesDedicatedUid",
+        "ok": true
+      },
+      {
+        "name": "publicProcessHasNoCapabilities",
+        "ok": true
+      },
+      {
+        "name": "publicProcessCannotGainPrivileges",
+        "ok": true
+      },
+      {
+        "name": "publicProcessHasNoExtraGroups",
+        "ok": true
+      },
+      {
+        "name": "publicProcessPrivatePidNamespace",
+        "ok": true
+      },
+      {
+        "name": "publicProcOnlyOwnNamespace",
+        "ok": true
+      },
+      {
+        "name": "publicProcessHasNoGithubToken",
+        "ok": true
+      }
+    ]
+  },
+  "restart": {
+    "at": "2026-11-02T21:52:19.775Z",
+    "passed": 5,
+    "total": 5,
+    "checks": [
+      {
+        "name": "sessionPreserved",
+        "ok": true
+      },
+      {
+        "name": "accountsUnchanged",
+        "ok": true
+      },
+      {
+        "name": "dockerNotRestarted",
+        "ok": true
+      },
+      {
+        "name": "operatorStillRequiresLogin",
+        "ok": true
+      },
+      {
+        "name": "logoutRevokesPreservedSession",
+        "ok": true
+      }
+    ]
+  },
+  "dependencyAudit": {
+    "at": "2026-11-02T21:14:41.407Z",
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "scope": "Somente dependencias npm de producao do painel; nao certifica imagens Docker ou seguranca completa."
+  },
+  "export": {
+    "file": "cloudworld-apresentacao-1793653661706.tar",
+    "bytes": 419246080,
+    "sha256": "55d4eb6f38cfc04dd123e9783389d121a2e3228c9d6c1fad93e1002568cd44f4",
+    "backupAt": "2026-11-02T21:01:35.789Z",
+    "offHostVerified": false,
+    "transfer": "nao confirmada; tentativa no navegador integrado cancelada; pacote privado preservado no Codespaces",
+    "keyStoredSeparately": false
+  },
+  "commercial": {
+    "ready": false,
+    "items": [
+      {
+        "id": "portal",
+        "label": "Acesso separado do cliente",
+        "ok": true,
+        "detail": "Portal próprio; permissões das ferramentas continuam sendo configuradas em cada aplicação."
+      },
+      {
+        "id": "mfa",
+        "label": "Segundo fator e contas individuais validados",
+        "ok": false,
+        "detail": "O responsavel precisa cadastrar seu autenticador; validar acesso, recuperacao e permissoes em cada ferramenta antes da entrega."
+      },
+      {
+        "id": "customer-isolation",
+        "label": "Duas empresas completas homologadas no servidor de destino",
+        "ok": false,
+        "detail": "Este Codespaces atende uma empresa de apresentacao. Ensaios de bancos e testes de codigo nao certificam duas empresas completas em producao."
+      },
+      {
+        "id": "backup",
+        "label": "Backup local recente",
+        "ok": true,
+        "detail": "2026-11-02T21:01:35.789Z"
+      },
+      {
+        "id": "schedule",
+        "label": "Rotina automática de backup",
+        "ok": false,
+        "detail": "O Codespaces pode suspender; tarefa Windows nao comprova agendamento remoto. Rotina permanente ainda depende do servidor definitivo."
+      },
+      {
+        "id": "external",
+        "label": "Cópia criptografada fora do servidor",
+        "ok": false,
+        "detail": "Destino externo nao configurado. Manter a chave de recuperacao separada."
+      },
+      {
+        "id": "restore",
+        "label": "Teste de integridade e restauração do último backup",
+        "ok": true,
+        "detail": "Verifica SQL e extração de volumes; consulte também o ensaio funcional."
+      },
+      {
+        "id": "functional-restore",
+        "label": "Aplicações e dados do último backup recuperados",
+        "ok": false,
+        "detail": "Ensaio local isolado de APIs, dados e portal; não certifica continuidade, carga, canais externos ou restauração em outro servidor."
+      },
+      {
+        "id": "local-load",
+        "label": "Ensaio local de consultas e rajadas",
+        "ok": false,
+        "detail": "Requer perfis de consultas contínuas e rajadas recentes, sem falhas e na configuração atual. Não substitui teste no servidor definitivo."
+      },
+      {
+        "id": "domain",
+        "label": "Domínio de produção",
+        "ok": false,
+        "detail": "Endereco temporario do Codespaces; dominio/endereco definitivo depende do servidor de producao."
+      },
+      {
+        "id": "hosting",
+        "label": "Servidor de produção disponível continuamente",
+        "ok": false,
+        "detail": "Codespaces remoto para apresentacao: sujeito a cota, suspensao e retencao. Nao homologado para operacao continua."
+      },
+      {
+        "id": "notification",
+        "label": "Avisos fora do painel",
+        "ok": false,
+        "detail": "Configure e teste o destino; alertas locais ficam registrados no painel."
+      },
+      {
+        "id": "licensing",
+        "label": "Licenças e condições comerciais revisadas",
+        "ok": false,
+        "detail": "Revisar oferta, principalmente n8n, antes de liberar acesso comercial."
+      },
+      {
+        "id": "business",
+        "label": "Configuração e treinamento do cliente",
+        "ok": false,
+        "detail": "ERP, WhatsApp, redes sociais, permissões, contrato e treinamento precisam ser definidos por cliente."
+      },
+      {
+        "id": "capacity",
+        "label": "Capacidade e disponibilidade homologadas",
+        "ok": false,
+        "detail": "Não há limite comercial de clientes aprovado. Testar no servidor definitivo."
+      }
+    ]
+  },
+  "scope": "Evidencias de homologacao em uma empresa de apresentacao. Nao aprova operacao comercial continua, MFA, canais externos ou duas empresas completas no servidor de destino."
+}

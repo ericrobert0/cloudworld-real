@@ -2,6 +2,8 @@
 
 O portal do Codespaces usa uma identidade Linux própria (UID/GID 61001), separada do operador que controla o Docker. A separação não adiciona containers nem instala pacotes. O piloto Windows em D: permanece com sua execução anterior.
 
+Atualização de 02/11: o processo também recebeu namespaces próprios de PID e montagem de /proc, ocultando os processos do operador e dos containers. A validação ampliada passou em 24 verificações; dois reinícios controlados preservaram as sessões e encerraram corretamente o processo anterior. O supervisor encaminha os sinais ao grupo exclusivo criado para o portal.
+
 ## Permissões e dados
 
 - O portal não recebe variáveis GitHub/GH, grupos suplementares, capabilities Linux ou permissão para obter novos privilégios. A heap JavaScript tem limite de 128 MiB; isso não é um limite rígido de memória total.
@@ -39,4 +41,4 @@ node scripts/Test-CodespacesPublic.mjs
 
 Isso é separação de identidade e permissões no mesmo host Linux, não uma máquina virtual ou sandbox completa. O host, kernel e rede continuam compartilhados. O Codespaces continua limitado a uma empresa de apresentação; produção com clientes diferentes exige ambientes e políticas próprios, MFA, backup externo, auditoria e hospedagem apropriada.
 
-Referência: [setpriv do util-linux](https://man7.org/linux/man-pages/man1/setpriv.1.html).
+Referências: [setpriv](https://man7.org/linux/man-pages/man1/setpriv.1.html) e [unshare](https://man7.org/linux/man-pages/man1/unshare.1.html), do util-linux.

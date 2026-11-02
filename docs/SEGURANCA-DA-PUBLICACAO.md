@@ -28,3 +28,7 @@ O portal passou a executar como UID/GID 61001, sem acesso ao socket Docker, arqu
 Depois de restaurar o backup, manter as portas privadas e executar `node scripts/Harden-Codespaces.mjs apresentacao`, os testes de aplicação/portal e as verificações HTTPS antes de nova publicação. O backup anterior às últimas configurações de segurança não deve ser tratado como autorização automática para reabrir portas.
 
 Referências: [cabeçalhos do Caddy](https://caddyserver.com/docs/caddyfile/directives/header), [encaminhamento de portas do Codespaces](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace).
+
+## Recuperação e isolamento ampliados
+
+Em 02/11, passaram 69 testes de código e 48 verificações de recuperação de bancos/volumes. O portal passou a ter /proc e namespace de PID próprios, com 24 verificações de identidade/permissões. O relatório atual é `reports/recovery-and-delivery.json`. A auditoria npm das dependências de produção do painel retornou zero vulnerabilidades conhecidas nessa data; imagens Docker e demais componentes não estão certificados por essa consulta. A cópia externa do pacote criptografado não foi confirmada; houve cancelamento na tentativa pelo navegador integrado e essa etapa continua pendente, assim como MFA, revisão independente e homologação no servidor definitivo.

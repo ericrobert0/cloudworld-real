@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {RUNTIME,writeJSON} from '../infra.mjs';
+import {readiness} from '../operations.mjs';
+const id=process.argv.find((a,i)=>i>1&&!a.startsWith('--'))||'apresentacao';
+const r=readiness(id),report={at:new Date().toISOString(),tenant:id,ready:r.ready,items:r.items};
+fs.mkdirSync(path.join(RUNTIME,'reports'),{recursive:true});writeJSON(path.join(RUNTIME,'reports','commercial-readiness.json'),report);
+console.log('CloudWorld: '+(r.ready?'criterios locais atendidos':'oferta comercial ainda bloqueada'));
+for(const item of r.items)console.log((item.ok?'OK: ':'PENDENTE: ')+item.label);
+if(!r.ready&&!process.argv.includes('--report-only'))process.exitCode=2;

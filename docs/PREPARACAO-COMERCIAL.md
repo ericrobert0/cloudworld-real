@@ -1,5 +1,11 @@
 # CloudWorld: preparação para prestação do serviço
 
+## Estado remoto atual
+
+O Codespaces executa uma empresa de apresentação com portal público e administração privada. A validação mais recente inclui 69 testes de código e 48 verificações de recuperação/isolamento de bancos e arquivos. Consulte [recuperação remota](RECUPERACAO-CODESPACES.md), [entrega e oferta](ENTREGA-E-OFERTA.md) e [levantamento de licenças](LICENCAS-DA-OFERTA.md). As seções de agendamento Windows abaixo continuam específicas ao piloto local; não certificam uma rotina no Codespaces.
+
+O painel distingue cópia local de destino externo de rede e mostra MFA, homologação de duas empresas e hospedagem contínua como pendentes. `node scripts/Check-CommercialReady.mjs apresentacao` gera um relatório e retorna saída 2 quando a oferta ainda está bloqueada.
+
 ## O que já é utilizável no piloto
 
 - Painel administrativo privado em http://127.0.0.1:8099.

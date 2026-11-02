@@ -60,5 +60,9 @@ export function startIsolatedPortal(root,origin,proxyHost){
   const accounts=new IsolatedPortalAccounts(root);
   const {server}=createPortal({accounts,origin,proxyHost});
   server.listen(8100,'127.0.0.1',()=>console.log('Portal CloudWorld isolado: '+origin));
+  for(const signal of ['SIGTERM','SIGINT'])process.once(signal,()=>{
+    server.close(()=>process.exit(0));server.closeIdleConnections();
+    setTimeout(()=>process.exit(0),4000).unref();
+  });
   return server;
 }

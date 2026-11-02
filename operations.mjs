@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {ROOT,RUNTIME,tenantPath} from './infra.mjs';
 import {atomicJSON} from './integration.mjs';
+import {backupTargetEvidence} from './backup-target.mjs';
 const read=(p,fallback)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'));}catch{return fallback;}};
 export function latestBackup(id){
   const base=path.join(RUNTIME,'backups',id);if(!fs.existsSync(base))return null;
@@ -11,6 +12,7 @@ export function latestBackup(id){
 export function readiness(id){
   const dir=tenantPath(id),t=read(path.join(dir,'tenant.json'),null);if(!t)throw Error('Empresa inexistente');
   const users=read(path.join(dir,'portal-users.private.json'),[]),backup=latestBackup(id),policy=read(path.join(RUNTIME,'backup-policy.private.json'),{}),job=read(path.join(RUNTIME,'backup-jobs',id+'.json'),{});
+  const codespaces=t.runtime==='codespaces',target=backupTargetEvidence(policy.externalDirectory);
   const restoreBase=path.join(RUNTIME,'restore-tests'),restore=backup&&fs.existsSync(restoreBase)&&fs.readdirSync(restoreBase).some(d=>{const r=read(path.join(restoreBase,d,'result.json'),{});return r.ok&&path.resolve(r.source||'')===path.resolve(backup.dir);});
   const functionalBase=path.join(RUNTIME,'functional-recovery'),functional=backup&&fs.existsSync(functionalBase)&&fs.readdirSync(functionalBase).some(d=>{const r=read(path.join(functionalBase,d,'result.json'),{});return r.ok===true&&r.tenant===id&&r.originalResumed===true&&r.copyStopped===true&&path.resolve(r.backup||'')===path.resolve(backup.dir);});
   const reports=path.join(RUNTIME,'reports'),hash=crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,'compose.json'))).digest('hex');
@@ -20,14 +22,16 @@ export function readiness(id){
   const notification=read(path.join(RUNTIME,'notification.private.json'),{}),notificationHealth=read(path.join(RUNTIME,'notification-health.private.json'),{}),notificationFingerprint=notification.url?crypto.createHash('sha256').update(notification.url+'\n'+(notification.token||'')).digest('hex'):'';
   const items=[
     {id:'portal',label:'Acesso separado do cliente',ok:users.some(u=>u.enabled),detail:'Portal próprio; permissões das ferramentas continuam sendo configuradas em cada aplicação.'},
+    {id:'mfa',label:'Segundo fator e contas individuais validados',ok:false,detail:'O responsavel precisa cadastrar seu autenticador; validar acesso, recuperacao e permissoes em cada ferramenta antes da entrega.'},
+    {id:'customer-isolation',label:'Duas empresas completas homologadas no servidor de destino',ok:false,detail:codespaces?'Este Codespaces atende uma empresa de apresentacao. Ensaios de bancos e testes de codigo nao certificam duas empresas completas em producao.':'Exige ensaio de APIs, arquivos, sessoes, redes e credenciais de duas empresas no servidor de destino.'},
     {id:'backup',label:'Backup local recente',ok:!!backup&&Date.now()-Date.parse(backup.manifest.createdAt)<36*3600000,detail:backup?.manifest.createdAt||'Nenhum backup completo encontrado'},
-    {id:'schedule',label:'Rotina automática de backup',ok:policy.enabled===true,detail:'No Windows atual, depende de sessão iniciada e Docker ativo.'},
-    {id:'external',label:'Cópia criptografada fora do servidor',ok:!!job.export?.ok&&!!policy.externalDirectory&&job.backupAt===backup?.manifest.createdAt&&job.export.targetId===crypto.createHash('sha256').update(path.resolve(policy.externalDirectory)).digest('hex'),detail:'Exige destino externo e chave de recuperação guardada separadamente.'},
+    {id:'schedule',label:'Rotina automática de backup',ok:policy.enabled===true&&process.platform==='win32'&&!codespaces,detail:codespaces?'O Codespaces pode suspender; tarefa Windows nao comprova agendamento remoto. Rotina permanente ainda depende do servidor definitivo.':'Requer tarefa ativa no sistema operacional e Docker disponivel.'},
+    {id:'external',label:'Cópia criptografada fora do servidor',ok:target.offHost&&!!job.export?.ok&&!!policy.externalDirectory&&job.backupAt===backup?.manifest.createdAt&&job.export.targetId===crypto.createHash('sha256').update(path.resolve(policy.externalDirectory)).digest('hex'),detail:target.reason+'. Manter a chave de recuperacao separada.'},
     {id:'restore',label:'Teste de integridade e restauração do último backup',ok:!!(restore||functional),detail:'Verifica SQL e extração de volumes; consulte também o ensaio funcional.'},
     {id:'functional-restore',label:'Aplicações e dados do último backup recuperados',ok:!!functional,detail:'Ensaio local isolado de APIs, dados e portal; não certifica continuidade, carga, canais externos ou restauração em outro servidor.'},
     {id:'local-load',label:'Ensaio local de consultas e rajadas',ok:!!localLoad,detail:localLoad?loadRequests+' leituras registradas, rajadas com até '+maxInFlight+' requisições em voo. Não define usuários/clientes nem homologa produção.':'Requer perfis de consultas contínuas e rajadas recentes, sem falhas e na configuração atual. Não substitui teste no servidor definitivo.'},
-    {id:'domain',label:'Domínio de produção',ok:!t.local&&!t.domain.endsWith('.localhost'),detail:'Ainda exige DNS, HTTPS e teste de acesso externo.'},
-    {id:'hosting',label:'Servidor de produção disponível continuamente',ok:false,detail:'Não homologado. A instalação atual depende do computador e da sessão Windows.'},
+    {id:'domain',label:'Domínio de produção',ok:!codespaces&&!t.local&&!t.domain.endsWith('.localhost')&&!t.domain.endsWith('.app.github.dev'),detail:codespaces?'Endereco temporario do Codespaces; dominio/endereco definitivo depende do servidor de producao.':'Ainda exige DNS, HTTPS e teste de acesso externo.'},
+    {id:'hosting',label:'Servidor de produção disponível continuamente',ok:false,detail:codespaces?'Codespaces remoto para apresentacao: sujeito a cota, suspensao e retencao. Nao homologado para operacao continua.':'Nao homologado. Disponibilidade depende do host e da configuracao de servicos.'},
     {id:'notification',label:'Avisos fora do painel',ok:notification.enabled===true&&notification.url?.startsWith('https:')&&notificationHealth.fingerprint===notificationFingerprint,detail:notificationHealth.fingerprint===notificationFingerprint?'Destino confirmou recebimento em '+notificationHealth.at:'Configure e teste o destino; alertas locais ficam registrados no painel.'},
     {id:'licensing',label:'Licenças e condições comerciais revisadas',ok:false,detail:'Revisar oferta, principalmente n8n, antes de liberar acesso comercial.'},
     {id:'business',label:'Configuração e treinamento do cliente',ok:false,detail:'ERP, WhatsApp, redes sociais, permissões, contrato e treinamento precisam ser definidos por cliente.'},

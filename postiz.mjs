@@ -9,7 +9,7 @@ export function addPostiz(c,{id,url,secrets}){
  const ready=(...names)=>Object.fromEntries(names.map(n=>[n,{condition:'service_healthy'}]));
  for(const n of ['postiz-db','temporal-db'])c.networks[n]={};
  for(const n of ['postiz-db','postiz-redis','postiz-config','postiz-uploads','temporal-db'])c.volumes[n]={};
- const pg=(name,user,db,password,image)=>{c.services[name]={...base,image,networks:[name],mem_limit:'512m',environment:{POSTGRES_USER:user,POSTGRES_DB:db,POSTGRES_PASSWORD:password},volumes:[`${name}:/var/lib/postgresql/data`],healthcheck:health(`pg_isready -U ${user} -d ${db}`)};};
+ const pg=(name,user,db,password,image)=>{c.services[name]={...base,image,networks:[name],mem_limit:'512m',environment:{POSTGRES_USER:user,POSTGRES_DB:db,POSTGRES_PASSWORD:password},volumes:[`${name}:/var/lib/postgresql/data`],healthcheck:health(`pg_isready -h 127.0.0.1 -U ${user} -d ${db}`)};};
  const user=`postiz_${id.replaceAll('-','_')}`,temporalUser=`temporal_${id.replaceAll('-','_')}`;
  pg('postiz-db',user,user,secrets.postiz,'postgres:17-alpine');pg('temporal-db',temporalUser,'temporal',secrets.temporal,'postgres:16-alpine');
  c.services['postiz-redis']={...base,image:'redis:7.2-alpine',networks:['postiz-db'],mem_limit:'256m',command:['redis-server','--appendonly','yes'],volumes:['postiz-redis:/data'],healthcheck:health('redis-cli ping | grep -q PONG')};
