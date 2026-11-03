@@ -10,32 +10,34 @@ try{& node --test --test-concurrency=1 tests/*.test.mjs;if($LASTEXITCODE -ne 0){
 $password=[IO.File]::ReadAllText((Join-Path $dest 'runtime\panel-password.txt')).Trim()
 $headers=@{Authorization='Basic '+[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('admin:'+$password))}
 try{$status=Invoke-RestMethod 'http://127.0.0.1:8099/api/status' -Headers $headers -TimeoutSec 5;if($status.busy){throw 'PAINEL_OCUPADO'}}catch{if($_.Exception.Message -match 'PAINEL_OCUPADO'){throw 'Aguarde a operacao atual.'};if((Get-ScheduledTask -TaskName VlanWorld-Control).State -eq 'Running'){throw 'Nao foi possivel consultar o painel ativo; nada alterado.'}}
-$files=@('package.json','package-lock.json','infra.mjs','integration.mjs','monitoring.mjs','operations.mjs','portal.mjs','backup-store.mjs','api.mjs','postiz.mjs','mixpost.mjs','host-policy.mjs','manage.mjs','panel.mjs','service.mjs','README.md','public/index.html','public/panel.js','public/panel.css','public/portal.html','public/portal.js','public/portal.css','scripts/Install-D.ps1','scripts/test-postiz.mjs','scripts/provision-integrations.mjs','scripts/test-platform-live.mjs','scripts/Register-Operations.ps1','scripts/Run-Portal.ps1','scripts/Run-Backups.mjs','scripts/Create-Pilot-Portal.mjs','docs/INTEGRACAO-CENTRAL.md','docs/PREPARACAO-COMERCIAL.md')
-$files+=@('notifications.mjs','scripts/test-portal-live.mjs','scripts/test-backup-export.mjs','scripts/Package-Release.mjs','scripts/Inspect-Capacity.mjs','scripts/Run-BackupTask.ps1')
-$files+=@('oidc.mjs','scripts/configure-portal-sso.mjs','scripts/test-sso-live.mjs')
-$files+=@('scripts/run-isolation-lab.mjs','docs/SSO-E-ISOLAMENTO.md')
-$files+=@('database-isolation.mjs','scripts/test-database-isolation.mjs')
-$files+=@('scripts/review-isolation-result.mjs','docs/ENTREGA-LOCAL-1.2.md')
-$files+=@('docs/PORTAL-DA-EMPRESA.md')
-$files+=@('recovery.mjs','scripts/test-functional-recovery.mjs','scripts/check-recovered-apps.mjs','docs/RECUPERACAO-FUNCIONAL.md')
-$files+=@('docs/ENTRADA-DE-CLIENTES.md')
-$files+=@('scripts/Apply-PostizOffline.mjs')
-$files+=@('docs/ENTREGA-LOCAL-1.4.md')
-$files+=@('load-test.mjs','scripts/test-load-local.mjs','scripts/test-load-bursts.mjs','docs/CARGA-LOCAL.md')
-$files+=@('docs/ENTREGA-LOCAL-1.5.md')
-$files+=@('resource-profile.mjs','scripts/Apply-EconomyProfile.mjs','docs/PERFIL-ECONOMICO.md')
-$files+=@('docs/ENTREGA-LOCAL-1.6.md')
-$files+=@('scripts/Check-LinuxHost.mjs','docs/ENTREGA-REAL-1.6.1.md')
-$files+=@('docs/ATENDIMENTO-INTEGRADO.md')
-$files+=@(Get-ChildItem -LiteralPath (Join-Path $source 'tests') -Filter '*.mjs' -File | ForEach-Object {'tests/'+$_.Name})
+$filesJson=& node (Join-Path $source 'scripts/List-Distribution.mjs')
+if($LASTEXITCODE -ne 0){throw 'Falha ao validar o manifesto de fontes.'}
+$files=@($filesJson | ConvertFrom-Json)
 $backup=Join-Path $dest ('runtime\deployments\cloudworld-'+(Get-Date -Format 'yyyyMMdd-HHmmss'))
 foreach($f in $files){$old=Join-Path $dest $f;if(Test-Path -LiteralPath $old){$save=Join-Path $backup $f;New-Item -ItemType Directory -Force (Split-Path $save -Parent)|Out-Null;Copy-Item -LiteralPath $old -Destination $save}}
-# Keep runtime, Compose projects, volumes and passwords in their current locations.
-foreach($f in $files){Copy-Item -LiteralPath (Join-Path $source $f) -Destination (Join-Path $dest $f) -Force}
-Copy-Item -LiteralPath (Join-Path $source 'node_modules') -Destination $dest -Recurse -Force
+# Stop processes before replacing their source files. Preserve tenant runtime and volumes.
+$portalRunning=(Get-ScheduledTask -TaskName 'CloudWorld-Portal' -ErrorAction SilentlyContinue).State -eq 'Running'
+$panelRunning=(Get-ScheduledTask -TaskName 'VlanWorld-Control').State -eq 'Running'
 Stop-ScheduledTask -TaskName VlanWorld-Control
+if($portalRunning){Stop-ScheduledTask -TaskName CloudWorld-Portal}
+try {
+    foreach($f in $files){
+        $target=Join-Path $dest $f
+        New-Item -ItemType Directory -Force (Split-Path $target -Parent)|Out-Null
+        Copy-Item -LiteralPath (Join-Path $source $f) -Destination $target -Force
+    }
+    & npm ci --ignore-scripts --prefix $dest --cache (Join-Path $dest '.npm-cache')
+    if($LASTEXITCODE -ne 0){throw 'Falha ao instalar dependencias na atualizacao.'}
+}catch{
+    # Restore sources that existed before this update. No tenant data is overwritten.
+    foreach($f in $files){$saved=Join-Path $backup $f;if(Test-Path -LiteralPath $saved){Copy-Item -LiteralPath $saved -Destination (Join-Path $dest $f) -Force}}
+    & npm ci --ignore-scripts --prefix $dest --cache (Join-Path $dest '.npm-cache')
+    if($panelRunning){Start-ScheduledTask -TaskName VlanWorld-Control}
+    if($portalRunning){Start-ScheduledTask -TaskName CloudWorld-Portal}
+    throw
+}
 Start-ScheduledTask -TaskName VlanWorld-Control
-if(Get-ScheduledTask -TaskName 'CloudWorld-Portal' -ErrorAction SilentlyContinue){Stop-ScheduledTask -TaskName 'CloudWorld-Portal';Start-ScheduledTask -TaskName 'CloudWorld-Portal'}
+if($portalRunning){Start-ScheduledTask -TaskName CloudWorld-Portal}
 $ready=$false
 for($i=0;$i -lt 30;$i++){
     try{$page=Invoke-WebRequest 'http://127.0.0.1:8099/' -Headers $headers -UseBasicParsing -TimeoutSec 3;if($page.StatusCode -eq 200 -and $page.Content.Contains('toggle-contact-sync')){$ready=$true;break}}catch{}

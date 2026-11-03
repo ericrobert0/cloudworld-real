@@ -4,6 +4,8 @@ import {spawn} from 'node:child_process';
 import {pipeline} from 'node:stream/promises';
 import {ROOT,RUNTIME,tenantPath,createTenant,writeJSON} from './infra.mjs';
 import {assertHostStorage} from './host-policy.mjs';
+import {writeArchiveBundle} from './integration-archive.mjs';
+import {containerCommand,normalizeEngineInfo,containerEngine} from './container-runtime.mjs';
 
 function checkStorage(info){
   const marker=name=>{const p=path.join(RUNTIME,name);return fs.existsSync(p)?JSON.parse(fs.readFileSync(p)):null;};
@@ -20,7 +22,8 @@ function run(args,{capture=false,output,input}={}) {
     // Stopping writers releases memory; serial 90-second grace periods made
     // backups unnecessarily long. Keep startup bounded while stopping four at once.
     const env=process.env.CODESPACES==='true'?{...process.env,COMPOSE_PARALLEL_LIMIT:args[0]==='compose'&&args.includes('stop')?'4':process.env.COMPOSE_PARALLEL_LIMIT==='1'?'1':'2'}:process.env;
-    const p=spawn('docker',args,{env,windowsHide:true,stdio:[input?'pipe':'ignore',capture||output?'pipe':'inherit','pipe']});
+    const cli=containerCommand(args,env);
+    const p=spawn(cli.command,cli.args,{env:cli.env,windowsHide:true,stdio:[input?'pipe':'ignore',capture||output?'pipe':'inherit','pipe']});
     let stdout='',stderr=''; if(capture) p.stdout.on('data',d=>stdout+=d);
     p.stderr.on('data',d=>{stderr+=d;if(!capture)process.stderr.write(d);});
     const streams=[];
@@ -56,11 +59,11 @@ export async function main(args=process.argv.slice(2)) {
   let lock;try{lock=fs.openSync(path.join(dir,'.operation.lock'),'wx');}catch{throw Error('Operacao em andamento. Se houve queda, confira processos antes de remover .operation.lock.');}
   try {
     if(action==='up'||action==='resume') {
-      const info=JSON.parse(await run(['info','--format','{{json .}}'],{capture:true}));
+      const info=normalizeEngineInfo(JSON.parse(await run(['info','--format','{{json .}}'],{capture:true})));
       checkStorage(info);
       if(action==='up') {
         await dc('config','--quiet');
-        if(process.env.CODESPACES==='true'){
+        if(process.env.CODESPACES==='true'||containerEngine==='podman'){
           // Pull once per image, sequentially; avoid parallel extraction peaks.
           const refs=[...new Set(Object.values(c.services).filter(s=>!s.profiles?.length).map(s=>s.image))];
           const cost=ref=>ref.includes('postiz-app')?7:ref.includes('erpnext')?4.5:ref.includes('chatwoot')?2.8:ref.includes('nextcloud')?2.1:ref.includes('goauthentik')?2:ref.includes('n8n')?1.9:0.8;
@@ -95,7 +98,7 @@ export async function main(args=process.argv.slice(2)) {
     } else if(action==='backup') {
       await backup(t,c,dir,dc);
     } else if(action==='update') {
-      const info=JSON.parse(await run(['info','--format','{{json .}}'],{capture:true}));
+      const info=normalizeEngineInfo(JSON.parse(await run(['info','--format','{{json .}}'],{capture:true})));
       checkStorage(info);
       if(process.env.CODESPACES==='true')throw Error('Atualizacao neste Codespace exige revisar espaco para backup e coexistencia das imagens antes de continuar.');
       const [service,image]=rest;
@@ -150,7 +153,8 @@ async function backup(t,c,dir,dc) {
       if(v==='wireguard-config') {try{await run(['volume','inspect',`${t.project}_${v}`],{capture:true});}catch{continue;}}
       await run(['run','--rm','--network','none','-v',`${t.project}_${v}:/source:ro`,'alpine:3.22','tar','-C','/source','-czf','-','.'],{output:path.join(dest,`${v}.tgz`)});
     }
-    for(const f of ['compose.json','tenant.json','secrets.json','Caddyfile','images.lock.json','mixpost-start.sh','postiz-admin.private.json','mixpost-admin.private.json','integrations.private.json','integration-events.private.json','integration-sources.private.json','monitoring.private.json','n8n-cloudworld-workflow.json','portal-users.private.json','portal-oidc.private.json','resource-profile.json'])if(fs.existsSync(path.join(dir,f)))fs.copyFileSync(path.join(dir,f),path.join(dest,f));
+    for(const f of ['compose.json','tenant.json','secrets.json','Caddyfile','images.lock.json','images.requested.json','mixpost-start.sh','postiz-admin.private.json','mixpost-admin.private.json','integrations.private.json','integration-events.private.json','integration-sources.private.json','monitoring.private.json','n8n-cloudworld-workflow.json','portal-users.private.json','portal-oidc.private.json','resource-profile.json'])if(fs.existsSync(path.join(dir,f)))fs.copyFileSync(path.join(dir,f),path.join(dest,f));
+    await writeArchiveBundle(dir,path.join(dest,'integration-archive.private.jsonl'));
     const {createHash}=await import('node:crypto');
     const hashes={};for(const f of fs.readdirSync(dest)) {const h=createHash('sha256');for await(const chunk of fs.createReadStream(path.join(dest,f)))h.update(chunk);hashes[f]=h.digest('hex');}
     writeJSON(path.join(dest,'manifest.json'),{client:t.id,createdAt:new Date().toISOString(),coldWriters:true,hashes});

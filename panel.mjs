@@ -9,6 +9,8 @@ import {createControlAPI} from './api.mjs';
 import {loadJobHistory,saveJobHistory} from './operations.mjs';
 import {ContainerEvents,DockerEventStream,projectContainers,dockerStatusArgs} from './docker-events.mjs';
 import {requestOriginAllowed} from './request-origin.mjs';
+import {containerCommand,containerEngine} from './container-runtime.mjs';
+import {createPanelAuth} from './panel-auth.mjs';
 fs.mkdirSync(RUNTIME,{recursive:true});
 const keyPath=path.join(RUNTIME,'panel-password.txt');
 if(!fs.existsSync(keyPath))fs.writeFileSync(keyPath,secret(),{mode:0o600});
@@ -28,10 +30,10 @@ const eventStream=new DockerEventStream({tracker:lifecycle,onUpdate:()=>{
 }});
 function refreshEngine(){
   if(engineQuery)return;engineQuery=true;
-  const p=spawn('docker',dockerStatusArgs(),{windowsHide:true});let out='',err='';
+  const cli=containerCommand(dockerStatusArgs());const p=spawn(cli.command,cli.args,{env:cli.env,windowsHide:true});let out='',err='';
   const timer=setTimeout(()=>p.kill(),8000);p.stdout.on('data',d=>{if(out.length<2*1024*1024)out+=d;else p.kill();});p.stderr.on('data',d=>err=(err+d).slice(-2000));
   p.on('error',e=>{clearTimeout(timer);engineQuery=false;engine={at:new Date().toISOString(),containers:[],error:e.message,events:lifecycle.status()};});
-  p.on('close',code=>{clearTimeout(timer);engineQuery=false;try{engine={at:new Date().toISOString(),containers:lifecycle.decorate(code===0?projectContainers(out.split('\n').filter(Boolean).map(s=>JSON.parse(s))):[]),error:code===0?null:err.slice(-1000)||'Docker nao respondeu',events:lifecycle.status()};}catch(e){engine={at:new Date().toISOString(),containers:[],error:e.message,events:lifecycle.status()};}});
+  p.on('close',code=>{clearTimeout(timer);engineQuery=false;try{engine={at:new Date().toISOString(),containerEngine,containers:lifecycle.decorate(code===0?projectContainers(out.split('\n').filter(Boolean).map(s=>JSON.parse(s))):[]),error:code===0?null:err.slice(-1000)||'Docker nao respondeu',events:lifecycle.status()};}catch(e){engine={at:new Date().toISOString(),containers:[],error:e.message,events:lifecycle.status()};}});
 }
 refreshEngine();setInterval(refreshEngine,15000).unref();eventStream.start();
 const control=createControlAPI({listTenants,engine:()=>engine,origin,proxyHost});
@@ -40,15 +42,17 @@ const staticAssets={
   '/assets/bootstrap.min.css': ['vendor/bootstrap.min.css','text/css; charset=utf-8'],
   '/assets/panel.css': ['panel.css','text/css; charset=utf-8']
 };
-function authorized(req){const got=Buffer.from(req.headers.authorization||'');const expected=Buffer.from('Basic '+Buffer.from('admin:'+password).toString('base64'));return got.length===expected.length&&crypto.timingSafeEqual(got,expected);}
+const panelAuth=createPanelAuth({password,origin,proxyHost,pagePath:path.join(ROOT,'public','panel-login.html')});
+const authorized=req=>panelAuth.authorized(req);
 const server=http.createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');
   // Validar Host tambem bloqueia DNS rebinding contra o painel local.
   const dockerCallback=req.headers.host===`host.docker.internal:${port}`&&/^\/api\/v1\/tenants\//.test(req.url)&&/^Bearer /.test(req.headers.authorization||'');
   const fromLoopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
   if(![`127.0.0.1:${port}`,panelOrigin.host].includes(req.headers.host)&&!(proxyHost&&fromLoopback&&req.headers.host===proxyHost)&&!dockerCallback){res.writeHead(403);res.end('Host invalido');return;}
+  if(await panelAuth.handle(req,res))return;
   if(await control.handle(req,res,authorized(req)))return;
-  if(!authorized(req)){res.writeHead(401,{'WWW-Authenticate':'Basic realm="CloudWorld", charset="UTF-8"'});res.end('Autenticacao necessaria');return;}
+  if(!authorized(req)){res.writeHead(401);res.end('Autenticacao necessaria');return;}
   if(req.method==='GET'&&staticAssets[req.url]){const [file,type]=staticAssets[req.url];res.setHeader('Content-Type',type);res.end(fs.readFileSync(path.join(ROOT,'public',file)));return;}
   if(req.method==='GET'&&req.url==='/'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(page);return;}
   if(req.method==='GET'&&req.url==='/api/status'){

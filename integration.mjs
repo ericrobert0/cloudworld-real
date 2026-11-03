@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import https from 'node:https';
 import {tenantPath,RUNTIME} from './infra.mjs';
+import {EventArchive,archiveDirectory} from './integration-archive.mjs';
 
 export const operations={
   auth:['check','users.list'],chat:['check','contacts.create','contacts.list'],erp:['check','customers.upsert'],
@@ -151,13 +152,33 @@ export class IntegrationHub{
     }
   }
   queue(id){return read(this.file(id,'integration-events.private.json'),[]);}
+  archive(id){return new EventArchive(archiveDirectory(this.dir(id)));}
+  queueStats(id){
+    const all=this.queue(id),states={pending:0,failed:0,delivered:0,unrouted:0};
+    for(const event of all)states[this.summary(event).state]++;
+    return {active:all.length,limit:10000,warning:all.length>=9000,states,archived:this.archive(id).names().length};
+  }
+  compact(id,{keepDelivered=1000,maxEvents=500}={}){
+    if(!Number.isInteger(keepDelivered)||keepDelivered<0||keepDelivered>9000||!Number.isInteger(maxEvents)||maxEvents<1||maxEvents>500)throw error('Limites de arquivamento invalidos');
+    if(fs.existsSync(this.file(id,'.operation.lock')))throw error('Empresa em manutencao',409);
+    const all=this.queue(id),completed=all.filter(e=>e.deliveries.length&&e.deliveries.every(d=>d.state==='delivered'));
+    const selected=completed.slice(0,Math.min(maxEvents,Math.max(0,completed.length-keepDelivered))),ids=new Set(selected.map(e=>e.id));
+    const archive=this.archive(id),at=new Date(this.clock()).toISOString();
+    // Archive first, then remove from the active queue. A failed write leaves
+    // the original queue intact; a retry safely reuses already published records.
+    for(const event of selected)archive.store(event,at);
+    if(selected.length)atomicJSON(this.file(id,'integration-events.private.json'),all.filter(e=>!ids.has(e.id)));
+    return {archived:selected.length,remaining:all.length-selected.length,eligible:Math.max(0,completed.length-keepDelivered-selected.length)};
+  }
   enqueue(id,input,key){
     if(typeof key!=='string'||!key||key.length>160)throw error('Idempotency-Key obrigatorio (ate 160 caracteres)');
     if(!['contact.created','message.received','sale.created','file.created','social.published'].includes(input.type)||!input.payload||typeof input.payload!=='object'||Array.isArray(input.payload))throw error('Evento invalido');
     if(Buffer.byteLength(JSON.stringify(input.payload))>32768)throw error('Payload excedeu 32 KB',413);
-    const events=this.queue(id),fingerprint=digest(JSON.stringify({type:input.type,payload:input.payload})),previous=events.find(e=>e.key===key);
-    if(previous){if(previous.fingerprint!==fingerprint)throw error('Chave de idempotencia reutilizada com outro conteudo',409);return this.summary(previous);}
-    if(events.length>=10000)throw error('Fila atingiu limite; arquive eventos concluidos',503);
+    if(fs.existsSync(this.file(id,'.operation.lock')))throw error('Empresa em manutencao; tente novamente depois',503);
+    let events=this.queue(id);const fingerprint=digest(JSON.stringify({type:input.type,payload:input.payload})),archived=this.archive(id).find(key),previous=events.find(e=>e.key===key)||archived?.event;
+    if(previous){if(previous.fingerprint!==fingerprint)throw error('Chave de idempotencia reutilizada com outro conteudo',409);return {...this.summary(previous),...(archived?{archived:true,archivedAt:archived.archivedAt}:{})};}
+    if(events.length>=9000){this.compact(id,{keepDelivered:events.length>=10000?0:1000});events=this.queue(id);}
+    if(events.length>=10000)throw error('Fila ativa atingiu limite; revise entregas pendentes, falhas ou sem fluxo',503);
     const routes=this.settings(id).routes.filter(r=>r.enabled&&r.event===input.type);
     const e={id:crypto.randomUUID(),key,fingerprint,type:input.type,payload:input.payload,createdAt:new Date(this.clock()).toISOString(),deliveries:routes.map(r=>({route:r.id,app:r.app,operation:r.operation,state:'pending',attempts:0,nextAt:this.clock()}))};
     events.push(e);atomicJSON(this.file(id,'integration-events.private.json'),events);return this.summary(e);

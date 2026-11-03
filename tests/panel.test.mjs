@@ -15,7 +15,8 @@ test('painel exige autenticacao, rejeita CSRF e Host falso; pagina tem JS valido
   const child=spawn(process.execPath,[path.join(ROOT,'panel.mjs')],{env:{...process.env,VW_PANEL_PORT:String(port)},windowsHide:true,stdio:'ignore'});
   try{
     let response;for(let i=0;i<60;i++){try{response=await fetch(base);break;}catch{await setTimeout(100);}}
-    assert.equal(response?.status,401);
+    assert.equal(response?.status,200);
+    assert.match(await response.text(),/Entrar no painel/);
     const password=fs.readFileSync(path.join(RUNTIME,'panel-password.txt'),'utf8').trim();
     const headers={Authorization:'Basic '+Buffer.from('admin:'+password).toString('base64')};
     const page=await fetch(base,{headers});assert.equal(page.status,200);
@@ -46,7 +47,7 @@ test('painel atras de HTTPS aceita somente o host e a origem configurados',async
     const request=(route,headers={},body)=>new Promise((resolve,reject)=>{
       const req=http.request({hostname:'127.0.0.1',port,path:route,method:body?'POST':'GET',headers:{Host:new URL(origin).host,...headers}},res=>{res.resume();resolve(res.statusCode);});req.on('error',reject);req.end(body);
     });
-    assert.equal(await request('/'),401);
+    assert.equal(await request('/'),303);
     const auth={Authorization:'Basic '+Buffer.from('admin:'+password).toString('base64')};
     assert.equal(await request('/',auth),200);
     assert.equal(await request('/',{...auth,Host:`localhost:${port}`}),200);
@@ -59,5 +60,26 @@ test('painel atras de HTTPS aceita somente o host e a origem configurados',async
     assert.equal(await request('/api/action',forwarded,payload),400);
     assert.equal(await request('/api/action',{...forwarded,'Sec-Fetch-Site':'cross-site'},payload),403);
     assert.equal(await request('/api/v1/tenants/proxyapi/keys',forwarded,JSON.stringify({scopes:['invalid']})),400);
+  }finally{child.kill();}
+});
+
+test('login por formulario funciona sem desafio Basic, preserva CSRF e revoga cookie ao sair',async()=>{
+  const port=18204,origin=`http://127.0.0.1:${port}`;
+  const child=spawn(process.execPath,[path.join(ROOT,'panel.mjs')],{env:{...process.env,VW_PANEL_PORT:String(port)},windowsHide:true,stdio:'ignore'});
+  try{
+    for(let i=0;i<60;i++){try{await fetch(origin);break;}catch{await setTimeout(100);}}
+    const page=await fetch(origin);assert.equal(page.status,200);assert.match(page.url,/\/login$/);assert.equal(page.headers.get('www-authenticate'),null);
+    assert.equal((await fetch(origin+'/api/status')).status,401);
+    const password=fs.readFileSync(path.join(RUNTIME,'panel-password.txt'),'utf8').trim();
+    const post={method:'POST',redirect:'manual',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({username:'admin',password})};
+    assert.equal((await fetch(origin+'/auth/login',{...post,headers:{...post.headers,Origin:'https://evil.invalid'}})).status,403);
+    const wrong=await fetch(origin+'/auth/login',{...post,body:new URLSearchParams({username:'admin',password:'invalid'})});assert.equal(wrong.headers.get('location'),'/login?error=1');assert.equal(wrong.headers.get('set-cookie'),null);
+    const login=await fetch(origin+'/auth/login',post);assert.equal(login.status,303);
+    const setCookie=login.headers.get('set-cookie');assert.match(setCookie,/HttpOnly/);assert.match(setCookie,/SameSite=Strict/);assert.ok(!setCookie.includes(password));
+    const Cookie=setCookie.split(';')[0];
+    assert.equal((await fetch(origin+'/api/status',{headers:{Cookie}})).status,200);
+    assert.equal((await fetch(origin+'/api/action',{method:'POST',headers:{Cookie,'Content-Type':'application/json'},body:'{}'})).status,403);
+    assert.equal((await fetch(origin+'/auth/logout',{method:'POST',redirect:'manual',headers:{Cookie,Origin:origin}})).status,303);
+    assert.equal((await fetch(origin+'/api/status',{headers:{Cookie}})).status,401);
   }finally{child.kill();}
 });

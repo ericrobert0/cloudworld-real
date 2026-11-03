@@ -1,3 +1,4 @@
+import {restoreArchiveBundle} from '../integration-archive.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -25,6 +26,8 @@ try{
   const source=latestBackup(id);assert.ok(source);const manifest=await verifyBackup(source.dir);report.backupAt=manifest.createdAt;report.backup=source.dir;
   const t=JSON.parse(fs.readFileSync(path.join(source.dir,'tenant.json'))),originalCompose=JSON.parse(fs.readFileSync(path.join(source.dir,'compose.json'))),files=Object.keys(manifest.hashes),plan=recoveryPlan(originalCompose,t,{project:runId,files});
   if(previous){assert.equal(path.resolve(previous.backup),path.resolve(source.dir));plan.compose=JSON.parse(fs.readFileSync(path.join(dir,'compose.json')));plan.compose.services.postiz.command=postizOfflineStartup;atomicJSON(path.join(dir,'compose.json'),plan.compose);}else{for(const file of files.filter(n=>!n.endsWith('.sql')&&!n.endsWith('.tgz')))fs.copyFileSync(path.join(source.dir,file),path.join(dir,file));atomicJSON(path.join(dir,'tenant.json'),plan.tenant);atomicJSON(path.join(dir,'compose.json'),plan.compose);}
+  const archiveBundle=path.join(dir,'integration-archive.private.jsonl');
+  if(!previous&&fs.existsSync(archiveBundle))await restoreArchiveBundle(archiveBundle,dir);
   assert.ok(files.includes('portal-oidc.private.json'),'Use backup atualizado com configuracao de login central');
   // Keep the original OIDC configuration as recovery evidence; local login is independently tested.
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir,'portal-oidc.private.json'))).requireSso,false,'Este ensaio requer fallback local habilitado no piloto');

@@ -9,7 +9,8 @@ import {promisify} from 'node:util';
 import {dockerStatusArgs,projectContainers} from '../docker-events.mjs';
 
 test('CLI real consulta status sem calcular tamanho nem transportar labels privados',async t=>{
-  if(spawnSync('docker',['--version'],{windowsHide:true,stdio:'ignore'}).status!==0){t.skip('Docker CLI ausente; nao requer daemon real.');return;}
+  const version=spawnSync('docker',['--version'],{windowsHide:true,encoding:'utf8'});
+  if(version.status!==0||/podman/i.test(version.stdout||'')){t.skip('Requer Docker CLI nativo: o daemon simulado nao implementa a API Libpod.');return;}
   const requests=[];
   const server=http.createServer((req,res)=>{
     const url=new URL(req.url,'http://localhost');requests.push(url);

@@ -52,6 +52,7 @@ export class AlertStore{
       for(const c of t.connectors||[])observations.push({tenant:t.id,key:'api:'+c.app,bad:c.state==='failed',label:'Conexão com '+c.app});
       for(const c of t.containers||[])observations.push({tenant:t.id,key:'container:'+c.name,bad:c.state==='failed'||c.state==='restarting',label:'Serviço: '+c.name});
       const events=read(path.join(tenantPath(t.id),'integration-events.private.json'),[]);
+      observations.push({tenant:t.id,key:'queue-capacity',bad:events.length>=9000,label:'Fila de integracoes proxima do limite; revisar entregas e arquivamento'});
       observations.push({tenant:t.id,key:'deliveries',bad:events.some(e=>e.deliveries.some(d=>d.state==='failed')),label:'Há entregas de eventos que precisam de revisão'});
       const sources=read(path.join(tenantPath(t.id),'integration-sources.private.json'),{});
       const settings=read(path.join(tenantPath(t.id),'integrations.private.json'),{});

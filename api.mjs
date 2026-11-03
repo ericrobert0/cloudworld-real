@@ -39,6 +39,8 @@ export function createControlAPI({listTenants,engine,origin,proxyHost=null,hub=n
       else if(/^keys\/[a-f0-9-]+$/.test(resource)&&req.method==='DELETE'){onlyOperator();hub.revokeKey(id,resource.split('/')[1]);json(res,200,{revoked:true});}
       else if(resource==='events'&&req.method==='POST'){authorize('events:write');json(res,202,hub.enqueue(id,await readBody(req),req.headers['idempotency-key']));}
       else if(resource==='events'&&req.method==='GET'){authorize('events:read');json(res,200,hub.events(id));}
+      else if(resource==='events/stats'&&req.method==='GET'){onlyOperator();json(res,200,hub.queueStats(id));}
+      else if(resource==='events/archive'&&req.method==='POST'){onlyOperator();json(res,200,hub.compact(id,await readBody(req)));}
       else if(/^contacts\/[1-9][0-9]{0,15}\/delivery$/.test(resource)&&req.method==='GET'){
         onlyOperator();const contactId=resource.split('/')[1],event=hub.queue(id).find(e=>e.key==='chat:contact_created:'+contactId);
         json(res,200,{contactId,captureEnabled:hub.settings(id).sources?.chatContacts===true,event:event?hub.summary(event):null});

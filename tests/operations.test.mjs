@@ -57,3 +57,12 @@ test('backup AES-GCM faz ida e volta, rejeita adulteracao e chave incorreta sem 
   const wrong=path.join(root,'wrong');await assert.rejects(()=>importBackup(encrypted,wrong,crypto.randomBytes(32)));assert.equal(fs.existsSync(path.join(wrong,'database.sql')),false);
   const file=path.join(encrypted,'database.sql.enc'),content=fs.readFileSync(file);content[20]^=1;fs.writeFileSync(file,content);await assert.rejects(()=>importBackup(encrypted,path.join(root,'corrupt'),key),/corrompida/);
 });
+
+test('queue capacity alert opens after repeated observations and resolves when capacity is freed',()=>{
+ createTenant('queue-alert');const file=path.join(RUNTIME,'tenants','queue-alert','integration-events.private.json');
+ atomicJSON(file,Array.from({length:9000},()=>({deliveries:[]})));
+ const alerts=new AlertStore(),snapshot={tenants:[{id:'queue-alert',checks:[],connectors:[],containers:[]}]};
+ alerts.evaluate({...snapshot,at:'capacity-one'});assert.ok(!alerts.list('queue-alert').some(a=>a.key==='queue-capacity'));
+ alerts.evaluate({...snapshot,at:'capacity-two'});assert.equal(alerts.list('queue-alert').find(a=>a.key==='queue-capacity').state,'open');
+ atomicJSON(file,[]);alerts.evaluate({...snapshot,at:'capacity-three'});assert.equal(alerts.list('queue-alert').find(a=>a.key==='queue-capacity').state,'resolved');
+});

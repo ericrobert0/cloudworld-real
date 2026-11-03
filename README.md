@@ -1,5 +1,21 @@
 # CloudWorld — plataforma de serviços por empresa
 
+## Atualizacao 1.6.4 — continuidade da fila
+
+Eventos entregues podem sair da fila ativa sem perder historico ou deduplicacao. O painel mostra a capacidade da fila e permite arquivar entregas antigas; entradas proximas do limite tentam liberar capacidade automaticamente. Pendencias, falhas e eventos sem fluxo permanecem na fila. Backups e recuperacao incluem o historico arquivado. Veja [fila e arquivamento](docs/FILA-E-ARQUIVAMENTO.md) para limites, API e retencao.
+
+
+## Atualizacao 1.6.3 — execucao local e distribuicao
+
+- Suporte ao Podman rootless em Linux com Docker Compose v2, configuracao verificada do socket e geracao de Compose com imagens qualificadas e rotulagem SELinux.
+- Login do painel por formulario, cookies de sessao, limite de tentativas e saida explicita; compatibilidade com Basic Auth preservada para scripts.
+- Indicadores do painel reconhecem Podman e inicializadores concluidos, incluindo Temporal.
+- Um manifesto unico alimenta instalacao, atualizacao e empacotamento, com verificacao de dependencias e exclusao de arquivos privados.
+- CI executa testes em Node 22 e 24 e gera o pacote de fontes. A execucao Windows dos instaladores ainda requer homologacao no sistema de destino.
+
+Para uma instalacao limpa em Linux, comece pelo [guia Podman](docs/PODMAN-LOCAL.md). Os relatos abaixo preservam o historico do piloto original; caminhos Windows, enderecos remotos e numeros antigos de testes nao descrevem automaticamente a sua instalacao.
+
+
 **Apresentação remota real:** seis aplicações instaladas, 69 testes de código aprovados e login do portal confirmado no navegador. Uma consulta pesada de status foi corrigida; a nova execução do Docker completou 30 minutos de observação sem encerramentos. Passaram 44 verificações dos serviços, sete do portal, 17 da integração e quatro de ciclo de vida. Consulte `docs/DOCKER-CONSULTA-LEVE.md`, `docs/CODESPACES-ACESSO.md` e `deploy/codespaces/README.md` para os resultados e limitações. O histórico de falhas foi preservado em `docs/CODESPACES-ENCERRAMENTO-DOCKER.md`. A plataforma continua em homologação; o Codespaces não equivale a hospedagem comercial permanente.
 
 **Recuperação remota:** 48 verificações aprovadas, incluindo sete bancos e 18 volumes restaurados em cópias temporárias. A cópia externa e a recuperação das interfaces no servidor definitivo continuam pendentes. Veja [o ensaio e o pacote de exportação](docs/RECUPERACAO-CODESPACES.md).

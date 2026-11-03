@@ -1,4 +1,5 @@
 import {addPostiz} from './postiz.mjs';
+import {prepareCompose,containerEngine} from './container-runtime.mjs';
 import {economyProfile} from './resource-profile.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -77,9 +78,9 @@ export function createTenant(id, domain=`${id}.localhost`, port=8443, options={}
   const caddy='{\n auto_https disable_redirects\n}\n'+Object.entries(targets).map(([app,target])=>`${app}.${domain} {\n ${local?'tls internal\n ':''}encode zstd gzip\n reverse_proxy ${target}\n header X-Content-Type-Options nosniff\n}\n`).join('\n');
   fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,'Caddyfile'),caddy);
   const economy=local&&options.resourceProfile!=='padrao';
-  const config={id,domain,port,local,project,sharedIngress,resourceProfile:economy?'economia-local':'padrao',serviceVersion:'2026-10-31.4',plan:'microempresa-padrao',createdAt:new Date().toISOString(),urls:Object.fromEntries(Object.keys(targets).map(k=>[k,url(k)]))};
+  const config={id,domain,port,local,project,sharedIngress,containerEngine,resourceProfile:economy?'economia-local':'padrao',serviceVersion:'2026-10-31.4',plan:'microempresa-padrao',createdAt:new Date().toISOString(),urls:Object.fromEntries(Object.keys(targets).map(k=>[k,url(k)]))};
   writeJSON(path.join(dir,'tenant.json'),config);writeJSON(path.join(dir,'secrets.json'),passwords);
-  const initial={name:project,services:s,networks,volumes},compose=economy?economyProfile(initial):initial;writeJSON(path.join(dir,'compose.json'),compose);
-  writeJSON(path.join(dir,'images.requested.json'),Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v.image])));
+  const initial={name:project,services:s,networks,volumes},compose=prepareCompose(economy?economyProfile(initial):initial);writeJSON(path.join(dir,'compose.json'),compose);
+  writeJSON(path.join(dir,'images.requested.json'),Object.fromEntries(Object.entries(compose.services).map(([k,v])=>[k,v.image])));
   return config;
 }

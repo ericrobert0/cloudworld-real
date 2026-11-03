@@ -1,4 +1,5 @@
 import {spawn} from 'node:child_process';
+import {containerCommand} from './container-runtime.mjs';
 
 // Full {{json .}} invokes Size during CLI template preprocessing. Explicitly
 // disable that costly filesystem scan and collect only fields used by CloudWorld.
@@ -58,7 +59,8 @@ export class DockerEventStream {
   }
   start(){
     if(this.closed||this.child)return;
-    const child=this.launch('docker',['events','--filter','type=container','--format','{{json .}}'],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+    const cli=containerCommand(['events','--filter','type=container','--format','{{json .}}']);
+    const child=this.launch(cli.command,cli.args,{env:cli.env,windowsHide:true,stdio:['ignore','pipe','pipe']});
     this.child=child;let buffer='',finished=false;
     const finish=()=>{
       if(finished)return;finished=true;if(this.child===child)this.child=null;
