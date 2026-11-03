@@ -10,7 +10,7 @@ O ambiente atual demonstra ferramentas reais de uma empresa. A oferta comercial 
 4. Restaurar uma cópia criptografada no destino, abrir as ferramentas recuperadas e conferir os dados. Guardar chave e backup separadamente e comprovar a cópia fora do servidor. Verificar também retorno após reinício e envio de alertas para um canal independente.
 5. O proprietário cadastra o segundo fator e guarda os códigos de recuperação em local privado. Confirmar que uma conta de cliente não administra o servidor ou outras empresas. Não cadastrar autenticadores sob controle de terceiros para o proprietário.
 6. Validar licenças do pacote, proposta, tratamento de dados, responsabilidades e suporte. Revisar o modelo específico antes de prometer integrações ou disponibilidade.
-7. Atender uma empresa piloto assistida, coletar falhas e medir consumo antes de ampliar.
+7. Atender uma empresa com o [roteiro de piloto assistido](PILOTO-ASSISTIDO.md), acompanhar o uso e medir o custo antes de ampliar.
 
 ## Cadastro de cada empresa
 
