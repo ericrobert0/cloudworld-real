@@ -1,5 +1,10 @@
 # CloudWorld — plataforma de serviços por empresa
 
+## Atualizacao 1.6.6 — fluxo local de contatos
+
+Preparo e ensaio do fluxo Chatwoot → ERPNext + n8n, com contas existentes preservadas e confirmacao identificada do evento pelo workflow. O piloto passou no ensaio real de contato, entrega e reenvio sem duplicacao. O workflow fornecido somente recebe e confirma; nao envia mensagens nem implementa rotinas financeiras. Veja [fluxo de contatos](docs/FLUXO-DE-CONTATOS.md).
+
+
 ## Atualizacao 1.6.5 — agendamento verificado
 
 O painel confirma o agendamento de backup consultando systemd no Linux ou o Agendador de Tarefas no Windows. A configuracao habilitada so e aprovada com evidencia recente da tarefa diaria correta e proxima execucao. Inclui modelos de timer de usuario para Podman rootless; nenhuma rotina e ativada automaticamente. Veja [agendamento verificado](docs/AGENDAMENTO-VERIFICADO.md).

@@ -13,7 +13,7 @@ const origin='http://127.0.0.1:8099',base=origin+'/api/v1/tenants/'+id,auth='Bas
 const requestOrigin=t.runtime==='codespaces'?codespacesIdentity().url(8099):origin;
 let key;
 let ready=false;
-for(let i=0;i<30;i++){try{const r=await fetch(origin,{signal:AbortSignal.timeout(2000)});if(r.status===401){ready=true;break;}}catch{}await delay(500);}
+for(let i=0;i<30;i++){try{const r=await fetch(origin,{signal:AbortSignal.timeout(2000)});if(r.status===401||r.status===200&&new URL(r.url).pathname==='/login'){ready=true;break;}}catch{}await delay(500);}
 if(!ready)throw Error('Painel nao iniciou; nenhum teste de escrita executado.');
 async function api(resource,method='GET',body,extra={}){
   const r=await fetch(base+'/'+resource,{method,headers:{Authorization:auth,Origin:requestOrigin,'Content-Type':'application/json',...extra},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(60000)});

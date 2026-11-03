@@ -48,17 +48,17 @@ export class IntegrationHub{
   dir(id){const dir=tenantPath(id);if(!fs.existsSync(path.join(dir,'tenant.json')))throw error('Empresa inexistente',404);return dir;}
   file(id,name){return path.join(this.dir(id),name);}
   settings(id){return read(this.file(id,'integrations.private.json'),{connectors:{},routes:[],keys:[]});}
-  publicSettings(id){const s=this.settings(id),sync=read(this.file(id,'integration-sources.private.json'),{});return {connectors:Object.fromEntries(Object.keys(operations).map(app=>{const c=s.connectors[app]||{};return [app,{configured:required[app].every(k=>!!c[k]),enabled:c.enabled===true,operations:operations[app],fields:required[app],accountId:c.accountId||'',username:c.username||'',webhookPath:c.webhookPath||''}];})),sources:{chatContacts:{enabled:s.sources?.chatContacts===true,lastAt:sync.chat?.lastAt,error:sync.chat?.error,initialized:!!sync.chat?.seen}},routes:s.routes,keys:s.keys.map(({hash,...k})=>k),delivery:'at-least-once',maxAttempts:5};}
+  publicSettings(id){const s=this.settings(id),sync=read(this.file(id,'integration-sources.private.json'),{});return {connectors:Object.fromEntries(Object.keys(operations).map(app=>{const c=s.connectors[app]||{};return [app,{configured:required[app].every(k=>!!c[k]),enabled:c.enabled===true,operations:operations[app],fields:required[app],requireAck:app==='n8n'&&c.requireAck===true,accountId:c.accountId||'',username:c.username||'',webhookPath:c.webhookPath||''}];})),sources:{chatContacts:{enabled:s.sources?.chatContacts===true,lastAt:sync.chat?.lastAt,error:sync.chat?.error,initialized:!!sync.chat?.seen}},routes:s.routes,keys:s.keys.map(({hash,...k})=>k),delivery:'at-least-once',maxAttempts:5};}
   configure(id,patch){
     const s=this.settings(id);
     if(patch.sources!==undefined){if(typeof patch.sources?.chatContacts!=='boolean'||Object.keys(patch.sources).some(k=>k!=='chatContacts'))throw error('Origem invalida');s.sources={chatContacts:patch.sources.chatContacts};}
     for(const [app,input] of Object.entries(patch.connectors||{})){
       if(!Object.hasOwn(operations,app)||!input||typeof input!=='object')throw error('Conector invalido');
       const c={...s.connectors[app]};for(const [k,v] of Object.entries(input)){
-        if(![...required[app],'enabled'].includes(k))throw error('Campo desconhecido: '+k);
-        if(k==='enabled'){if(typeof v!=='boolean')throw error('enabled deve ser booleano');}
+        if(![...required[app],'enabled',...(app==='n8n'?['requireAck']:[])].includes(k))throw error('Campo desconhecido: '+k);
+        if(k==='enabled'||k==='requireAck'){if(typeof v!=='boolean')throw error(k+' deve ser booleano');}
         else if(typeof v!=='string'||v.length>4096||/[\r\n]/.test(v))throw error('Credencial invalida');
-        if(v!==''||k==='enabled')c[k]=v;
+        if(v!==''||k==='enabled'||k==='requireAck')c[k]=v;
       }
       if(c.accountId&&!/^\d+$/.test(c.accountId))throw error('accountId invalido');
       if(c.webhookPath&&!/^[a-zA-Z0-9/_-]{1,120}$/.test(c.webhookPath))throw error('Caminho do webhook invalido');
@@ -143,7 +143,12 @@ export class IntegrationHub{
       if(r.status===405)return {folder,existing:true};if(r.status!==201)throw error('cloud: HTTP '+r.status,r.status>=500?503:422);return {folder,created:true};
     }
     if(operation==='events.send'){
-      const result=await call('/webhook/'+c.webhookPath,'POST',{...payload,id:eventId||crypto.randomUUID(),tenant:id});
+      const deliveryId=eventId||crypto.randomUUID();
+      const result=await call('/webhook/'+c.webhookPath,'POST',{...payload,id:deliveryId,tenant:id});
+      if(c.requireAck&&(result?.accepted!==true||result.eventId!==deliveryId||result.tenant!==id)){
+        atomicJSON(this.file(id,'integration-webhook-health.json'),{at:this.clock(),error:'acknowledgement-mismatch'});
+        throw error('n8n nao confirmou o evento e a empresa esperados',422);
+      }
       atomicJSON(this.file(id,'integration-webhook-health.json'),{fingerprint:digest(JSON.stringify(c)),at:this.clock()});return result;
     }
     if(operation==='messages.send'){

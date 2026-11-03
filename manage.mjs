@@ -153,7 +153,7 @@ async function backup(t,c,dir,dc) {
       if(v==='wireguard-config') {try{await run(['volume','inspect',`${t.project}_${v}`],{capture:true});}catch{continue;}}
       await run(['run','--rm','--network','none','-v',`${t.project}_${v}:/source:ro`,'alpine:3.22','tar','-C','/source','-czf','-','.'],{output:path.join(dest,`${v}.tgz`)});
     }
-    for(const f of ['compose.json','tenant.json','secrets.json','Caddyfile','images.lock.json','images.requested.json','mixpost-start.sh','postiz-admin.private.json','mixpost-admin.private.json','integrations.private.json','integration-events.private.json','integration-sources.private.json','monitoring.private.json','n8n-cloudworld-workflow.json','portal-users.private.json','portal-oidc.private.json','resource-profile.json'])if(fs.existsSync(path.join(dir,f)))fs.copyFileSync(path.join(dir,f),path.join(dest,f));
+    for(const f of ['compose.json','tenant.json','secrets.json','Caddyfile','images.lock.json','images.requested.json','mixpost-start.sh','postiz-admin.private.json','n8n-admin.private.json','n8n-contact-plan.private.json','mixpost-admin.private.json','integrations.private.json','integration-events.private.json','integration-sources.private.json','monitoring.private.json','n8n-cloudworld-workflow.json','portal-users.private.json','portal-oidc.private.json','resource-profile.json'])if(fs.existsSync(path.join(dir,f)))fs.copyFileSync(path.join(dir,f),path.join(dest,f));
     await writeArchiveBundle(dir,path.join(dest,'integration-archive.private.jsonl'));
     const {createHash}=await import('node:crypto');
     const hashes={};for(const f of fs.readdirSync(dest)) {const h=createHash('sha256');for await(const chunk of fs.createReadStream(path.join(dest,f)))h.update(chunk);hashes[f]=h.digest('hex');}

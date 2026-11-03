@@ -3,22 +3,37 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {IntegrationHub,atomicJSON} from '../integration.mjs';
-import {tenantPath,secret} from '../infra.mjs';
+import {ROOT,tenantPath,secret} from '../infra.mjs';
 import {assertPresentationTenant} from '../codespaces.mjs';
+import {containerCommand} from '../container-runtime.mjs';
+import {contactFlow,contactWorkflow} from '../contact-flow.mjs';
 const id=process.argv[2]||'piloto',dir=tenantPath(id),tenant=JSON.parse(fs.readFileSync(path.join(dir,'tenant.json'))),hub=new IntegrationHub();
 assertPresentationTenant(tenant);
+const appOption=process.argv.slice(3).find(value=>value.startsWith('--apps=')),selected=appOption?appOption.slice(7).split(','):null;
+if(selected&&(!selected.length||selected.some(app=>!['chat','erp','n8n','auth','cloud','postiz','waha'].includes(app))))throw Error('Lista de aplicacoes invalida');
+if(process.argv.slice(3).some(value=>value!==appOption&&value!=='--repair-cloud-user'))throw Error('Opcao desconhecida');
 const container=name=>tenant.project+'-'+name+'-1';
 function run(args,input){return new Promise((resolve,reject)=>{
-  const p=spawn('docker',args,{windowsHide:true,stdio:['pipe','pipe','pipe']});let out='',err='';const timer=setTimeout(()=>p.kill(),120000);
+  const cli=containerCommand(args);const p=spawn(cli.command,cli.args,{env:cli.env,windowsHide:true,stdio:['pipe','pipe','pipe']});let out='',err='';const timer=setTimeout(()=>p.kill(),120000);
   p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>err+=d);p.on('error',reject);p.on('close',code=>{clearTimeout(timer);if(code!==0)reject(Object.assign(Error('Comando administrativo falhou (saida retida para nao expor credenciais)'),{privateOutput:out+'\n'+err}));else resolve(out);});p.stdin.end(input||'');
 });}
 const exec=(name,args,input)=>run(['exec','-i',container(name),...args],input);
 const sql=(name,query)=>exec(name,['sh','-c','exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA'],query);
 const marked=s=>{const line=s.split('\n').find(l=>l.startsWith('CWJSON:'));if(!line)throw Error('Resposta administrativa inesperada');return JSON.parse(line.slice(7));};
 const checks=[];
-async function stage(app,fn){try{
+async function stage(app,fn){if(selected&&!selected.includes(app))return;try{
   if(!hub.publicSettings(id).connectors[app].configured||(app==='cloud'&&process.argv.includes('--repair-cloud-user')))hub.configure(id,{connectors:{[app]:{enabled:true,...await fn()}}});
-  const result=await hub.invoke(id,app,'check');checks.push({app,ok:true,authentication:result.authentication});console.log(app+': conectado');
+  let result;try{result=await hub.invoke(id,app,'check');}catch(e){
+    if(app!=='erp'||e.message!=='erp: HTTP 401')throw e;
+    await new Promise((resolve,reject)=>{
+      const child=spawn(process.execPath,[path.join(ROOT,'scripts/Check-ERPIntegration.mjs'),id,'--repair-stored-secret'],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+      let diagnostic='';const timer=setTimeout(()=>child.kill(),35000);
+      for(const stream of [child.stdout,child.stderr])stream.on('data',chunk=>diagnostic=(diagnostic+chunk).slice(-65536));
+      child.on('error',error=>{clearTimeout(timer);reject(error);});
+      child.on('close',code=>{clearTimeout(timer);code===0?resolve():reject(Object.assign(Error('Credencial ERP precisa de revisao; nenhuma chave foi regenerada'),{privateOutput:diagnostic}));});
+    });
+    result=await hub.invoke(id,app,'check');
+  }checks.push({app,ok:true,authentication:result.authentication});console.log(app+': conectado');
 }catch(e){if(e.privateOutput)fs.writeFileSync(path.join(dir,'integration-'+app+'-diagnostic.private.txt'),e.privateOutput,{mode:0o600});checks.push({app,ok:false,error:e.status?e.message:e.message});console.log(app+': pendente (sem alterar demais conexoes)');}}
 if(tenant.deferredServices?.waha)console.log('waha: adiado, sem numero conectado');
 else await stage('waha',async()=>({token:JSON.parse(fs.readFileSync(path.join(dir,'secrets.json'))).waha}));
@@ -45,16 +60,24 @@ await stage('postiz',async()=>{
 });
 // n8n workflow and credential are created only in this tenant's database.
 await stage('n8n',async()=>{
-  const token=secret(),credentialId='cloudworldHeaderAuth',workflowId='cloudworldEventBus';
-  const owner=(await sql('n8n-db','SELECT id FROM "user" ORDER BY "createdAt" LIMIT 1;')).trim();if(!owner)throw Error('Cadastre o proprietario no n8n primeiro');
-  const creds=[{id:credentialId,name:'CloudWorld event receiver',type:'httpHeaderAuth',data:{name:'X-CloudWorld-Key',value:token}}];
-  const workflow={id:workflowId,name:'CloudWorld - Receber eventos da empresa',active:false,nodes:[{id:'cw-webhook',name:'Receber evento',type:'n8n-nodes-base.webhook',typeVersion:2,position:[0,0],webhookId:'cloudworld-events',parameters:{httpMethod:'POST',path:'cloudworld-events',authentication:'headerAuth',responseMode:'onReceived',options:{}},credentials:{httpHeaderAuth:{id:credentialId,name:'CloudWorld event receiver'}}}],connections:{},settings:{executionOrder:'v1',saveDataSuccessExecution:'none',saveDataErrorExecution:'none'}};
+  const planFile=path.join(dir,'n8n-contact-plan.private.json');
+  let plan=fs.existsSync(planFile)?JSON.parse(fs.readFileSync(planFile)):null;
+  if(!plan){
+    const occupied=await sql('n8n-db',`SELECT id FROM workflow_entity WHERE id='${contactFlow.workflowId}';`);
+    const occupiedCredential=await sql('n8n-db',`SELECT id FROM credentials_entity WHERE id='${contactFlow.credentialId}';`);
+    if(occupied.trim()||occupiedCredential.trim())throw Error('Workflow ou credencial ja existe sem plano gerenciado; nenhuma sobrescrita executada');
+    plan={...contactFlow,token:secret()};atomicJSON(planFile,plan);
+  }
+  const {token,credentialId,workflowId}=plan;
+  const owner=(await sql('n8n-db','SELECT id FROM "user" WHERE email IS NOT NULL ORDER BY "createdAt" LIMIT 1;')).trim();if(!owner)throw Error('Cadastre o proprietario no n8n primeiro');
+  const creds=[{id:credentialId,name:'CloudWorld contact receiver',type:'httpHeaderAuth',data:{name:'X-CloudWorld-Key',value:token}}];
+  const workflow=contactWorkflow();
   const upload=async(file,data)=>exec('n8n',['node','-e',`const fs=require('fs');let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>fs.writeFileSync(${JSON.stringify(file)},s,{mode:384}));`],JSON.stringify(data));
   const cp='/tmp/cloudworld-credential.json',wp='/tmp/cloudworld-workflow.json';
   try{await upload(cp,creds);await upload(wp,[workflow]);await exec('n8n',['n8n','import:credentials','--input='+cp,'--userId='+owner]);await exec('n8n',['n8n','import:workflow','--input='+wp,'--userId='+owner]);await exec('n8n',['n8n','publish:workflow','--id='+workflowId]);}
   finally{await exec('n8n',['node','-e',`for(const f of ${JSON.stringify([cp,wp])})require('fs').rmSync(f,{force:true})`]).catch(()=>{});}
-  atomicJSON(path.join(dir,'n8n-cloudworld-workflow.json'),{id:workflowId,credentialId,webhookPath:'cloudworld-events',restartRequired:true});
-  return {token,webhookPath:'cloudworld-events'};
+  atomicJSON(path.join(dir,'n8n-cloudworld-workflow.json'),{id:workflowId,credentialId,webhookPath:contactFlow.webhookPath,restartRequired:true});
+  return {token,webhookPath:contactFlow.webhookPath,requireAck:true};
 });
 atomicJSON(path.join(dir,'integration-provision-report.json'),{at:new Date().toISOString(),checks,scope:'APIs locais; sem mensagens WhatsApp ou publicacoes externas'});
 if(checks.some(c=>!c.ok))process.exitCode=1;
