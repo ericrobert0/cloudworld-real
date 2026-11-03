@@ -6,6 +6,7 @@
     "source-manifest.json",
     "README.md",
     "api.mjs",
+    "backup-schedule.mjs",
     "backup-store.mjs",
     "backup-target.mjs",
     "codespaces.mjs",

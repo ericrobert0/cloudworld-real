@@ -6,6 +6,7 @@ import {AlertStore,readiness} from './operations.mjs';
 import {NotificationDelivery,notificationSettings,configureNotifications} from './notifications.mjs';
 import {ssoStatus,requireCentralLogin} from './oidc.mjs';
 import {requestOriginAllowed} from './request-origin.mjs';
+import {BackupScheduleMonitor} from './backup-schedule.mjs';
 
 const err=(message,status)=>Object.assign(Error(message),{status});
 export {readBody} from './read-body.mjs';
@@ -19,8 +20,8 @@ export function normalizeWebhook(source,body){
   throw err('Evento nao suportado (mensagens de saida sao ignoradas)',422);
 }
 export function createControlAPI({listTenants,engine,origin,proxyHost=null,hub=new IntegrationHub()}){
-  const monitor=new Monitor(hub),accounts=new PortalAccounts(),alerts=new AlertStore(),notifications=new NotificationDelivery();
-  const tick=async()=>{const all=listTenants(),ids=all.map(t=>t.id);await Promise.allSettled([(async()=>{await hub.pollSources(ids);await hub.drain(ids);})(),(async()=>{await monitor.refresh(all,engine());alerts.evaluate(monitor.snapshot);await notifications.tick();})()]);};
+  const schedule=new BackupScheduleMonitor(),monitor=new Monitor(hub),accounts=new PortalAccounts(),alerts=new AlertStore(),notifications=new NotificationDelivery();
+  const tick=async()=>{const all=listTenants(),ids=all.map(t=>t.id);await Promise.allSettled([schedule.refresh(),(async()=>{await hub.pollSources(ids);await hub.drain(ids);})(),(async()=>{await monitor.refresh(all,engine());alerts.evaluate(monitor.snapshot);await notifications.tick();})()]);};
   const worker=setInterval(()=>{tick().catch(()=>{});},15000);worker.unref();
   function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(value));}
   return {hub,monitor,tick,close:()=>clearInterval(worker),async handle(req,res,operator){

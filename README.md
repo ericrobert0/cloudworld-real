@@ -1,5 +1,10 @@
 # CloudWorld — plataforma de serviços por empresa
 
+## Atualizacao 1.6.5 — agendamento verificado
+
+O painel confirma o agendamento de backup consultando systemd no Linux ou o Agendador de Tarefas no Windows. A configuracao habilitada so e aprovada com evidencia recente da tarefa diaria correta e proxima execucao. Inclui modelos de timer de usuario para Podman rootless; nenhuma rotina e ativada automaticamente. Veja [agendamento verificado](docs/AGENDAMENTO-VERIFICADO.md).
+
+
 ## Atualizacao 1.6.4 — continuidade da fila
 
 Eventos entregues podem sair da fila ativa sem perder historico ou deduplicacao. O painel mostra a capacidade da fila e permite arquivar entregas antigas; entradas proximas do limite tentam liberar capacidade automaticamente. Pendencias, falhas e eventos sem fluxo permanecem na fila. Backups e recuperacao incluem o historico arquivado. Veja [fila e arquivamento](docs/FILA-E-ARQUIVAMENTO.md) para limites, API e retencao.

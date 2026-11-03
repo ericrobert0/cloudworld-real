@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import {ROOT,RUNTIME,tenantPath} from './infra.mjs';
 import {atomicJSON} from './integration.mjs';
 import {backupTargetEvidence} from './backup-target.mjs';
+import {backupScheduleReadiness} from './backup-schedule.mjs';
 const read=(p,fallback)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'));}catch{return fallback;}};
 export function latestBackup(id){
   const base=path.join(RUNTIME,'backups',id);if(!fs.existsSync(base))return null;
@@ -12,7 +13,7 @@ export function latestBackup(id){
 export function readiness(id){
   const dir=tenantPath(id),t=read(path.join(dir,'tenant.json'),null);if(!t)throw Error('Empresa inexistente');
   const users=read(path.join(dir,'portal-users.private.json'),[]),backup=latestBackup(id),policy=read(path.join(RUNTIME,'backup-policy.private.json'),{}),job=read(path.join(RUNTIME,'backup-jobs',id+'.json'),{});
-  const codespaces=t.runtime==='codespaces',target=backupTargetEvidence(policy.externalDirectory);
+  const codespaces=t.runtime==='codespaces',target=backupTargetEvidence(policy.externalDirectory),schedule=backupScheduleReadiness(policy,{codespaces});
   const restoreBase=path.join(RUNTIME,'restore-tests'),restore=backup&&fs.existsSync(restoreBase)&&fs.readdirSync(restoreBase).some(d=>{const r=read(path.join(restoreBase,d,'result.json'),{});return r.ok&&path.resolve(r.source||'')===path.resolve(backup.dir);});
   const functionalBase=path.join(RUNTIME,'functional-recovery'),functional=backup&&fs.existsSync(functionalBase)&&fs.readdirSync(functionalBase).some(d=>{const r=read(path.join(functionalBase,d,'result.json'),{});return r.ok===true&&r.tenant===id&&r.originalResumed===true&&r.copyStopped===true&&path.resolve(r.backup||'')===path.resolve(backup.dir);});
   const reports=path.join(RUNTIME,'reports'),hash=crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,'compose.json'))).digest('hex');
@@ -25,7 +26,7 @@ export function readiness(id){
     {id:'mfa',label:'Segundo fator e contas individuais validados',ok:false,detail:'O responsavel precisa cadastrar seu autenticador; validar acesso, recuperacao e permissoes em cada ferramenta antes da entrega.'},
     {id:'customer-isolation',label:'Duas empresas completas homologadas no servidor de destino',ok:false,detail:codespaces?'Este Codespaces atende uma empresa de apresentacao. Ensaios de bancos e testes de codigo nao certificam duas empresas completas em producao.':'Exige ensaio de APIs, arquivos, sessoes, redes e credenciais de duas empresas no servidor de destino.'},
     {id:'backup',label:'Backup local recente',ok:!!backup&&Date.now()-Date.parse(backup.manifest.createdAt)<36*3600000,detail:backup?.manifest.createdAt||'Nenhum backup completo encontrado'},
-    {id:'schedule',label:'Rotina automática de backup',ok:policy.enabled===true&&process.platform==='win32'&&!codespaces,detail:codespaces?'O Codespaces pode suspender; tarefa Windows nao comprova agendamento remoto. Rotina permanente ainda depende do servidor definitivo.':'Requer tarefa ativa no sistema operacional e Docker disponivel.'},
+    {id:'schedule',label:'Rotina automática de backup',...schedule},
     {id:'external',label:'Cópia criptografada fora do servidor',ok:target.offHost&&!!job.export?.ok&&!!policy.externalDirectory&&job.backupAt===backup?.manifest.createdAt&&job.export.targetId===crypto.createHash('sha256').update(path.resolve(policy.externalDirectory)).digest('hex'),detail:target.reason+'. Manter a chave de recuperacao separada.'},
     {id:'restore',label:'Teste de integridade e restauração do último backup',ok:!!(restore||functional),detail:'Verifica SQL e extração de volumes; consulte também o ensaio funcional.'},
     {id:'functional-restore',label:'Aplicações e dados do último backup recuperados',ok:!!functional,detail:'Ensaio local isolado de APIs, dados e portal; não certifica continuidade, carga, canais externos ou restauração em outro servidor.'},
