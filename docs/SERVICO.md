@@ -47,6 +47,8 @@ Use `node scripts/Test-LinuxEdgeLab.mjs` para verificar as rotas com duas redes 
 
 A checagem HTTPS mantém a validação de certificados, recusa redirecionamentos de login para outro domínio e exige 401 ou 403 nas rotas de dados privados testadas. As rotas do editor, da API administrativa e dos webhooks de teste do n8n devem responder 404. O relatório fica em `runtime/reports/deployment-https-EMPRESA.json`; saída 2 indica pendência. O ensaio usa requisições GET sem credenciais e precisa ser executado no domínio de destino.
 
+O painel considera esse relatório por até 36 horas, no mesmo servidor e com os mesmos endereços e Compose. Mudanças no domínio, nas URLs ou no Compose exigem repetir a checagem. Cadastro de domínio sem relatório válido mantém a pendência. A cópia externa exige que a última execução de backup tenha concluído com sucesso.
+
 ## Funcionamento como serviço no Windows
 
 `scripts\Register-Service.ps1` registra `VlanWorld-Control` no Agendador do Windows. O painel inicia na entrada do usuário e tem até três tentativas de reinício em caso de falha. Logs ficam em `runtime\service.log`. Não armazena senha do Windows e não exige autologin.

@@ -11,6 +11,39 @@ const {AlertStore,readiness,saveJobHistory,loadJobHistory}=await import('../oper
 const {exportBackup,importBackup,loadBackupKey,verifyExport}=await import('../backup-store.mjs');
 createTenant('alpha');
 
+test('dominio exige HTTPS recente do mesmo servidor e da configuracao atual',()=>{
+  const tenant=createTenant('delta','delta.example.com',23443);
+  const dir=path.join(RUNTIME,'tenants',tenant.id);
+  const reportFile=path.join(RUNTIME,'reports','deployment-https-delta.json');
+  const composeFile=path.join(dir,'compose.json');
+  const originalCompose=fs.readFileSync(composeFile);
+  const record={
+    tenant:tenant.id,at:new Date().toISOString(),ok:true,hostname:os.hostname(),
+    composeSha256:crypto.createHash('sha256').update(fs.readFileSync(composeFile)).digest('hex'),
+    tenantConfigSha256:crypto.createHash('sha256').update(JSON.stringify({domain:tenant.domain,urls:tenant.urls})).digest('hex')
+  };
+  const verified=()=>readiness(tenant.id).items.find(item=>item.id==='domain').ok;
+  assert.equal(verified(),false);
+  atomicJSON(reportFile,record);
+  assert.equal(verified(),true);
+  for(const patch of [
+    {ok:false},{tenant:'alpha'},{hostname:'another-host'},
+    {at:new Date(Date.now()-37*3600000).toISOString()},
+    {at:new Date(Date.now()+60000).toISOString()},
+    {composeSha256:'old'},{tenantConfigSha256:'old'}
+  ]){
+    atomicJSON(reportFile,{...record,...patch});
+    assert.equal(verified(),false,JSON.stringify(patch));
+  }
+  atomicJSON(reportFile,record);
+  fs.appendFileSync(composeFile,'\n');
+  assert.equal(verified(),false);
+  fs.writeFileSync(composeFile,originalCompose);
+  assert.equal(verified(),true);
+  atomicJSON(path.join(dir,'tenant.json'),{...tenant,urls:{...tenant.urls,erp:'https://erp.other.example.com'}});
+  assert.equal(verified(),false);
+});
+
 test('exportacao valida em pasta local nao aprova copia fora do servidor nem agenda Windows no Codespaces',()=>{
   const t=createTenant('charlie','charlie.localhost',11443),dir=path.join(RUNTIME,'tenants','charlie');atomicJSON(path.join(dir,'tenant.json'),{...t,local:false,domain:'temporary.app.github.dev',runtime:'codespaces'});
   const dest=path.join(RUNTIME,'same-host'),stamp=new Date().toISOString();fs.mkdirSync(dest);

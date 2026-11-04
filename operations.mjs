@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import {ROOT,RUNTIME,tenantPath} from './infra.mjs';
 import {atomicJSON} from './integration.mjs';
 import {backupTargetEvidence} from './backup-target.mjs';
@@ -17,6 +18,11 @@ export function readiness(id){
   const restoreBase=path.join(RUNTIME,'restore-tests'),restore=backup&&fs.existsSync(restoreBase)&&fs.readdirSync(restoreBase).some(d=>{const r=read(path.join(restoreBase,d,'result.json'),{});return r.ok&&path.resolve(r.source||'')===path.resolve(backup.dir);});
   const functionalBase=path.join(RUNTIME,'functional-recovery'),functional=backup&&fs.existsSync(functionalBase)&&fs.readdirSync(functionalBase).some(d=>{const r=read(path.join(functionalBase,d,'result.json'),{});return r.ok===true&&r.tenant===id&&r.originalResumed===true&&r.copyStopped===true&&path.resolve(r.backup||'')===path.resolve(backup.dir);});
   const reports=path.join(RUNTIME,'reports'),hash=crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,'compose.json'))).digest('hex');
+  const https=read(path.join(reports,'deployment-https-'+id+'.json'),{});
+  const httpsAge=Date.now()-Date.parse(https.at);
+  const tenantConfigHash=crypto.createHash('sha256').update(JSON.stringify({domain:t.domain,urls:t.urls})).digest('hex');
+  const httpsVerified=https.ok===true&&https.tenant===id&&https.hostname===os.hostname()&&https.composeSha256===hash
+    &&https.tenantConfigSha256===tenantConfigHash&&httpsAge>=0&&httpsAge<36*3600000;
   const loadReport=prefix=>fs.existsSync(reports)?fs.readdirSync(reports).filter(n=>new RegExp('^'+prefix+'-\\d+\\.json$').test(n)).map(n=>read(path.join(reports,n),{})).filter(r=>r.tenant===id).sort((a,b)=>Date.parse(b.at)-Date.parse(a.at))[0]:null;
   const sustained=loadReport('load-local'),bursts=loadReport('load-bursts'),validLoad=r=>r?.ok===true&&r.phase==='complete'&&r.composeSha256===hash&&Date.now()-Date.parse(r.finishedAt)<36*3600000,localLoad=validLoad(sustained)&&validLoad(bursts);
   const burstRows=(bursts?.rounds||[]).flatMap(r=>r.bursts||[]),loadRequests=(sustained?.stages||[]).flatMap(s=>s.endpoints||[]).reduce((n,e)=>n+(Number(e.requests)||0),0)+burstRows.reduce((n,e)=>n+(Number(e.requests)||0),0),maxInFlight=Math.max(0,...burstRows.map(r=>Number(r.maxInFlight)||0));
@@ -27,11 +33,11 @@ export function readiness(id){
     {id:'customer-isolation',label:'Duas empresas completas homologadas no servidor de destino',ok:false,detail:codespaces?'Este Codespaces atende uma empresa de apresentacao. Ensaios de bancos e testes de codigo nao certificam duas empresas completas em producao.':'Exige ensaio de APIs, arquivos, sessoes, redes e credenciais de duas empresas no servidor de destino.'},
     {id:'backup',label:'Backup local recente',ok:!!backup&&Date.now()-Date.parse(backup.manifest.createdAt)<36*3600000,detail:backup?.manifest.createdAt||'Nenhum backup completo encontrado'},
     {id:'schedule',label:'Rotina automática de backup',...schedule},
-    {id:'external',label:'Cópia criptografada fora do servidor',ok:target.offHost&&!!job.export?.ok&&!!policy.externalDirectory&&job.backupAt===backup?.manifest.createdAt&&job.export.targetId===crypto.createHash('sha256').update(path.resolve(policy.externalDirectory)).digest('hex'),detail:target.reason+'. Manter a chave de recuperacao separada.'},
+    {id:'external',label:'Cópia criptografada fora do servidor',ok:target.offHost&&job.state==='ok'&&!!job.export?.ok&&!!policy.externalDirectory&&job.backupAt===backup?.manifest.createdAt&&job.export.targetId===crypto.createHash('sha256').update(path.resolve(policy.externalDirectory)).digest('hex'),detail:target.reason+'. Manter a chave de recuperacao separada.'},
     {id:'restore',label:'Teste de integridade e restauração do último backup',ok:!!(restore||functional),detail:'Verifica SQL e extração de volumes; consulte também o ensaio funcional.'},
     {id:'functional-restore',label:'Aplicações e dados do último backup recuperados',ok:!!functional,detail:'Ensaio local isolado de APIs, dados e portal; não certifica continuidade, carga, canais externos ou restauração em outro servidor.'},
     {id:'local-load',label:'Ensaio local de consultas e rajadas',ok:!!localLoad,detail:localLoad?loadRequests+' leituras registradas, rajadas com até '+maxInFlight+' requisições em voo. Não define usuários/clientes nem homologa produção.':'Requer perfis de consultas contínuas e rajadas recentes, sem falhas e na configuração atual. Não substitui teste no servidor definitivo.'},
-    {id:'domain',label:'Domínio de produção',ok:!codespaces&&!t.local&&!t.domain.endsWith('.localhost')&&!t.domain.endsWith('.app.github.dev'),detail:codespaces?'Endereco temporario do Codespaces; dominio/endereco definitivo depende do servidor de producao.':'Ainda exige DNS, HTTPS e teste de acesso externo.'},
+    {id:'domain',label:'Domínio e acesso HTTPS verificados',ok:!codespaces&&!t.local&&!t.domain.endsWith('.localhost')&&!t.domain.endsWith('.app.github.dev')&&httpsVerified,detail:codespaces?'Endereço temporário do Codespaces; aguarda domínio definitivo.':httpsVerified?'Verificação HTTPS registrada em '+https.at:'Execute Check-DeploymentHttps.mjs no servidor de destino. O relatório precisa ser recente e corresponder à configuração atual.'},
     {id:'hosting',label:'Servidor de produção disponível continuamente',ok:false,detail:codespaces?'Codespaces remoto para apresentacao: sujeito a cota, suspensao e retencao. Nao homologado para operacao continua.':'Nao homologado. Disponibilidade depende do host e da configuracao de servicos.'},
     {id:'notification',label:'Avisos fora do painel',ok:notification.enabled===true&&notification.url?.startsWith('https:')&&notificationHealth.fingerprint===notificationFingerprint,detail:notificationHealth.fingerprint===notificationFingerprint?'Destino confirmou recebimento em '+notificationHealth.at:'Configure e teste o destino; alertas locais ficam registrados no painel.'},
     {id:'licensing',label:'Licenças e condições comerciais revisadas',ok:false,detail:'Revisar oferta, principalmente n8n, antes de liberar acesso comercial.'},

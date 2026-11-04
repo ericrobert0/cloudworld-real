@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { RUNTIME, writeJSON } from '../infra.mjs';
+import os from 'node:os';
+import crypto from 'node:crypto';
+import { RUNTIME, writeJSON, tenantPath } from '../infra.mjs';
 import { tenants } from '../service.mjs';
 import { inspectHttpsTarget } from '../https-check.mjs';
 
@@ -34,7 +36,12 @@ for (const [name, url] of Object.entries(tenant.urls)) {
 }
 
 const checks = await Promise.all(targets.map(target => inspectHttpsTarget(target)));
-const report = { tenant: id, at: new Date().toISOString(), ok: checks.every(check => check.ok), checks };
+const report = {
+  tenant: id, at: new Date().toISOString(), ok: checks.every(check => check.ok), checks,
+  hostname: os.hostname(), portalOrigin: portal.origin,
+  composeSha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(tenantPath(id),'compose.json'))).digest('hex'),
+  tenantConfigSha256: crypto.createHash('sha256').update(JSON.stringify({domain:tenant.domain,urls:tenant.urls})).digest('hex')
+};
 const file = path.join(RUNTIME, 'reports', 'deployment-https-' + id + '.json');
 fs.mkdirSync(path.dirname(file), { recursive: true });
 writeJSON(file, report);
