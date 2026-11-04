@@ -168,7 +168,9 @@ async function smoke(t,c,dir) {
   for(const [name,s] of Object.entries(c.services).filter(([n,s])=>n.endsWith('-db')&&s.environment?.POSTGRES_DB))await check(`${name}: SQL`,()=>run([...dcArgs,'exec','-T',name,'sh','-ec','psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "SELECT 1"']));
   for(const [name,s] of Object.entries(c.services).filter(([n,s])=>n.endsWith('-db')&&s.environment?.MARIADB_ROOT_PASSWORD))await check(`${name}: SQL`,()=>run([...dcArgs,'exec','-T',name,'sh','-ec','mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "SELECT 1"']));
   for(const [app,url] of Object.entries(t.apiUrls||t.urls))await check(`${app}: ${t.apiUrls?'gateway interno':'HTTPS'}`,async()=>{
-    const target=app==='mixpost'?`${url}/mixpost/login`:app==='postiz'?`${url}/api/auth/can-register`:url;
+    const checks={mixpost:'/mixpost/login',postiz:'/api/auth/can-register'};
+    if(t.sharedIngress)checks.n8n='/healthz/readiness';
+    const target=url+(checks[app]||'');
     // curl preserva Host/SNI. -k somente para CA local gerada pelo Caddy.
     const endpoint=new URL(url);
     const args=['--silent','--show-error','--max-time','45','--output',process.platform==='win32'?'NUL':'/dev/null','--write-out','%{http_code}',...(t.local?['--insecure','--resolve',`${endpoint.hostname}:${endpoint.port||443}:127.0.0.1`]:[]),target];

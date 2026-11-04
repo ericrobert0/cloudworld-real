@@ -32,11 +32,11 @@ export async function inspectBackupSchedule({root=ROOT,runtime=RUNTIME,platform=
       const argv=service.ExecStart?.match(/argv\[\]=([^;]+)\s*;/)?.[1].trim().split(/\s+/)||[];
       const env=Object.fromEntries((service.Environment||'').split(/\s+/).filter(value=>value.includes('=')).map(value=>{const i=value.indexOf('=');return [value.slice(0,i),value.slice(i+1)];}));
       const environmentValid=!/[\"'\\]/.test(service.Environment||'');
-      const configuredRuntime=env.VW_RUNTIME_DIR?path.resolve(root,env.VW_RUNTIME_DIR):path.join(root,'runtime');
+      const configuredRuntime=env.VW_RUNTIME_DIR?path.posix.resolve(root,env.VW_RUNTIME_DIR):path.posix.join(root,'runtime');
       const targetMatches=service.LoadState==='loaded'&&service.WorkingDirectory===root
-        &&argv.length===2&&/^node(?:\.exe)?$/.test(path.basename(argv[0]))&&argv[1]===path.join(root,'scripts','Run-Backups.mjs')
+        &&argv.length===2&&/^node(?:\.exe)?$/.test(path.posix.basename(argv[0]))&&argv[1]===path.posix.join(root,'scripts','Run-Backups.mjs')
         &&(!service.User&&scope==='user'||service.User===username)
-        &&environmentValid&&path.resolve(configuredRuntime)===path.resolve(runtime)&&!service.EnvironmentFiles
+        &&environmentValid&&path.posix.resolve(configuredRuntime)===path.posix.resolve(runtime)&&!service.EnvironmentFiles
         &&(!env.CW_CONTAINER_ENGINE||env.CW_CONTAINER_ENGINE===engine);
       const enabled=timer.UnitFileState==='enabled',active=timer.ActiveState==='active',daily=/OnCalendar=\*-\*-\*\s+\d{2}:\d{2}:\d{2}(?:\s+[A-Za-z_]+(?:\/[A-Za-z_]+)*)?\s*;/.test(timer.TimersCalendar||'');
       const verified=timer.LoadState==='loaded'&&enabled&&active&&daily&&targetMatches&&timer.Triggers?.split(' ').includes('cloudworld-backup.service')&&future(nextAt,now);

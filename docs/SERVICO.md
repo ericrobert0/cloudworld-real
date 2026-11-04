@@ -39,7 +39,11 @@ Depois que o Docker funcionar, confirme armazenamento no D:, inicie os ambientes
 
 O script gera rotas, inicia/reconfigura o gateway e recarrega Caddy. As redes de todos os clientes cadastrados para esse gateway precisam existir; inicie-os antes. A cada novo cadastro público, repita o script após criar seu ambiente. Cadastros locais não entram no gateway público.
 
-O gateway usa ACME público. CGNAT, portas bloqueadas, DNS incorreto ou ausência de domínio impedem a emissão. Nenhum domínio foi contratado e nenhum endpoint foi publicado nesta instalação. As seis aplicações recebem rotas; aplique as restrições privadas de administração antes da abertura comercial. O painel 8099 e o WAHA permanecem locais.
+O gateway usa ACME público. CGNAT, portas bloqueadas, DNS incorreto ou ausência de domínio impedem a emissão. No domínio do n8n, o gateway encaminha apenas webhooks de produção e a verificação de disponibilidade. Editor, APIs de administração e webhooks de teste retornam 404 nessa entrada. Configure autenticação nos workflows e faça a administração por acesso privado. O painel 8099 e o WAHA permanecem locais.
+
+Em Linux com Docker, defina `CW_LINUX_EDGE=1` no painel e no terminal que executa `node service.mjs edge`. O Compose gerado em `runtime/edge` cria um gateway por empresa, ligado somente à sua rede HTTP e à porta local de cadastro mais um. Mantenha o perfil `local-ingress` desativado nessa instalação para liberar a porta. O Caddy do host atende HTTPS e importa as rotas geradas em `Caddyfile.host` e as rotas do portal em `deploy/linux/Caddyfile.portal`. Em uma migração, encerre o serviço antigo de gateway para liberar as portas 80 e 443.
+
+Use `node scripts/Test-LinuxEdgeLab.mjs` para verificar as rotas com duas redes temporárias. Com duas empresas ativas no servidor, rode `node scripts/Check-LinuxEdge.mjs EMPRESA_A EMPRESA_B` e `node scripts/Check-DeploymentHttps.mjs EMPRESA_A https://portal.seudominio`. Esses dois comandos verificam a rede a partir dos containers e as respostas HTTPS, respectivamente.
 
 ## Funcionamento como serviço no Windows
 

@@ -34,22 +34,45 @@ export function onboard(id,baseDomain=''){
     return t;
   }finally{fs.closeSync(fd);fs.unlinkSync(registry);}
 }
-export function gatewayConfig(all){
+export function gatewayConfig(all,{linuxHost=false}={}){
   const selected=all.filter(t=>t.sharedIngress),networks={};
   if(!selected.length)throw Error('Nenhum cliente configurado para entrada publica central.');
-  const routes=[];
+  const routes=[],hostRoutes=[],tenantFiles={},services={};
+  const gateway={image:'caddy:2.10.2',restart:'unless-stopped',cpus:1,mem_limit:'512m',logging:{driver:'json-file',options:{'max-size':'10m','max-file':'3'}}};
   const ports={auth:9000,chat:3000,n8n:5678,postiz:5000,cloud:80,erp:8080};
   for(const t of selected){
     tenantPath(t.id);
     if(!/^[a-z0-9.-]+$/.test(t.domain))throw Error('Dominio invalido no cadastro.');
     networks[t.id]={external:true,name:`${t.project}_proxy`};
-    for(const app of catalog.applications)routes.push(`${app}.${t.domain} {\n encode zstd gzip\n reverse_proxy ${t.id}-${app}:${ports[app]}\n header X-Content-Type-Options nosniff\n}\n`);
+    const tenantRoutes=[];
+    const loopbackPort=t.port+1;
+    if(linuxHost&&(!Number.isInteger(t.port)||loopbackPort>65535||loopbackPort<1024))throw Error('Porta inválida no cadastro.');
+    for(const app of catalog.applications){
+      const upstream=`${t.id}-${app}:${ports[app]}`;
+      const hostname=`${app}.${t.domain}`;
+      const proxyToApp=linuxHost?
+        `reverse_proxy ${upstream} {\n  header_up X-Forwarded-Proto https\n }\n`:
+        `reverse_proxy ${upstream}\n`;
+      const proxy=app==='n8n'?
+        ` @automation path /healthz/readiness /webhook/* /webhook-waiting/*\n handle @automation {\n  ${proxyToApp} }\n handle {\n  respond 404\n }\n`:
+        ` ${proxyToApp}`;
+      tenantRoutes.push(`${linuxHost?'http://':''}${hostname} {\n encode zstd gzip\n header X-Content-Type-Options nosniff\n${proxy}}\n`);
+      if(linuxHost)hostRoutes.push(`${hostname} {\n reverse_proxy 127.0.0.1:${loopbackPort}\n}\n`);
+    }
+    if(linuxHost){
+      const file=`Caddyfile.${t.id}`;
+      tenantFiles[file]=tenantRoutes.join('\n')+'\nhttp:// {\n respond 404\n}\n';
+      services[`gateway-${t.id}`]={...gateway,ports:[`127.0.0.1:${loopbackPort}:80`],volumes:[`./${file}:/etc/caddy/Caddyfile:ro`],networks:[t.id]};
+    }else routes.push(...tenantRoutes);
   }
-  return {caddyfile:routes.join('\n'),compose:{name:'vw-edge',services:{gateway:{image:'caddy:2.10.2',restart:'unless-stopped',cpus:1,mem_limit:'512m',ports:['80:80','443:443','443:443/udp'],volumes:['./Caddyfile:/etc/caddy/Caddyfile:ro','edge-data:/data','edge-config:/config'],networks:Object.keys(networks),logging:{driver:'json-file',options:{'max-size':'10m','max-file':'3'}}}},networks,volumes:{'edge-data':{},'edge-config':{}}}};
+  if(!linuxHost)services.gateway={...gateway,ports:['80:80','443:443','443:443/udp'],volumes:['./Caddyfile:/etc/caddy/Caddyfile:ro','edge-data:/data','edge-config:/config'],networks:Object.keys(networks)};
+  return {caddyfile:routes.join('\n'),tenantFiles,hostCaddyfile:hostRoutes.join('\n'),compose:{name:'vw-edge',services,networks,volumes:linuxHost?{}:{'edge-data':{},'edge-config':{}}}};
 }
 export function writeGateway(){
-  const config=gatewayConfig(tenants()),dir=path.join(RUNTIME,'edge');
+  const config=gatewayConfig(tenants(),{linuxHost:process.env.CW_LINUX_EDGE==='1'}),dir=path.join(RUNTIME,'edge');
   writeJSON(path.join(dir,'compose.json'),config.compose);fs.writeFileSync(path.join(dir,'Caddyfile'),config.caddyfile);
+  for(const [file,content] of Object.entries(config.tenantFiles))fs.writeFileSync(path.join(dir,file),content);
+  if(config.hostCaddyfile)fs.writeFileSync(path.join(dir,'Caddyfile.host'),config.hostCaddyfile);
   return dir;
 }
 export function adopt(id){
