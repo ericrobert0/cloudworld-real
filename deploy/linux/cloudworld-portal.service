@@ -1,17 +1,23 @@
 [Unit]
 Description=CloudWorld customer portal
-After=network-online.target
+After=network-online.target cloudworld-portal-projector.service
+Requires=cloudworld-portal-projector.service
 [Service]
 Type=simple
-User=cloudworld
-Group=cloudworld
+User=cloudworld-portal
+Group=cloudworld-portal
 WorkingDirectory=/opt/cloudworld
 EnvironmentFile=/etc/cloudworld/portal.env
-ExecStart=/usr/bin/node /opt/cloudworld/portal.mjs
+ExecStart=/usr/bin/node --max-old-space-size=128 /opt/cloudworld/scripts/Serve-LinuxPortal.mjs
 Restart=on-failure
 RestartSec=5
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectProc=invisible
+InaccessiblePaths=/opt/cloudworld/runtime -/run/docker.sock
+ReadWritePaths=/var/lib/cloudworld-portal/sessions
 [Install]
 WantedBy=multi-user.target

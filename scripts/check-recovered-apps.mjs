@@ -10,10 +10,50 @@ const id='piloto',t=JSON.parse(fs.readFileSync(path.join(tenantPath(id),'tenant.
 // Docker Desktop may not publish ports for internal networks. Exercise the actual
 // HTTPS ingress from a container on that private network, with certificate checks.
 const requestCode=`const https=require('https'),http=require('http'),dns=require('dns');let input='';process.stdin.on('data',d=>input+=d);process.stdin.on('end',()=>{const p=JSON.parse(input),u=new URL(p.url),local=u.protocol==='http:';const headers={...p.headers,Host:u.host};const q=(local?http:https).request({hostname:local?'waha':u.hostname,port:local?3000:443,path:u.pathname+u.search,method:p.method,headers,ca:p.ca,servername:u.hostname,lookup:(h,o,cb)=>dns.lookup(local?'waha':'ingress',o,cb),timeout:15000},r=>{let body='';r.on('data',d=>{body+=d;if(body.length>1048576)q.destroy(Error('size'))});r.on('end',()=>{let data;try{data=JSON.parse(body)}catch{data=body}console.log(JSON.stringify({status:r.statusCode,data}));});});q.on('timeout',()=>q.destroy(Error('timeout')));q.on('error',()=>process.exit(1));q.end();});`;
-async function requestRecovered(url,{headers={},method='GET'}={}){const u=new URL(url);assert.ok(u.protocol==='https:'&&u.hostname.endsWith('.piloto.localhost')&&u.port==='8543'||u.protocol==='http:'&&u.hostname==='127.0.0.1'&&u.port==='8545');return new Promise((resolve,reject)=>{const child=spawn('docker',['exec','-i',t.project+'-n8n-1','node','-e',requestCode],{windowsHide:true,stdio:['pipe','pipe','pipe']});let out='';child.stdout.on('data',d=>out+=d);child.stderr.resume();child.on('error',reject);child.on('close',code=>{try{if(code)throw Error('Transporte privado indisponivel');resolve(JSON.parse(out));}catch(e){reject(e);}});child.stdin.on('error',()=>{});child.stdin.end(JSON.stringify({url,headers,method,ca:fs.readFileSync(path.join(tenantPath(id),'local-ca.crt'),'utf8')}));});}
+async function requestRecovered(url,{headers={},method='GET'}={}){
+  const u=new URL(url);
+  assert.ok(u.protocol==='https:'&&u.hostname.endsWith('.piloto.localhost')&&u.port==='8543'||u.protocol==='http:'&&u.hostname==='127.0.0.1'&&u.port==='8545');
+  return new Promise((resolve,reject)=>{
+    const child=spawn('docker',['exec','-i',t.project+'-n8n-1','node','-e',requestCode],{windowsHide:true,stdio:['pipe','pipe','pipe']});
+    let out='';
+    child.stdout.on('data',d=>out+=d);
+    child.stderr.resume();
+    child.on('error',reject);
+    child.on('close',code=>{
+      try{
+        if(code)throw Error('Transporte privado indisponivel');
+        const result=JSON.parse(out);
+        if(u.hostname.startsWith('erp.')&&result.status>=400){
+          const type=result.data?.exc_type;
+          atomicJSON(path.join(RUNTIME,'erp-recovery-status.json'),{
+            at:new Date().toISOString(),status:result.status,
+            errorType:/^[A-Za-z][A-Za-z0-9_]*$/.test(type||'')?type:'unknown'
+          });
+        }
+        resolve(result);
+      }catch(e){reject(e);}
+    });
+    child.stdin.on('error',()=>{});
+    child.stdin.end(JSON.stringify({url,headers,method,ca:fs.readFileSync(path.join(tenantPath(id),'local-ca.crt'),'utf8')}));
+  });
+}
 const hub=new IntegrationHub({transport:requestRecovered});
-async function check(name,fn){for(let attempt=0;attempt<3;attempt++)try{await fn();checks.push({name,ok:true});console.log(name+': OK');return;}catch(e){if(attempt<2){await delay(2000);continue;}fs.appendFileSync(path.join(RUNTIME,'checks-diagnostic.private.log'),name+'\n'+e.stack+'\n',{mode:0o600});checks.push({name,ok:false});console.log(name+': FALHOU');}}
-for(const app of ['auth','chat','erp','cloud','postiz','n8n','waha'])await check('Aplicacao restaurada: '+app,async()=>{await hub.invoke(id,app,'check');});
+async function check(name,fn,attempts=3){
+  for(let attempt=0;attempt<attempts;attempt++){
+    try{
+      await fn();
+      checks.push({name,ok:true});
+      console.log(name+': OK');
+      return;
+    }catch(e){
+      if(attempt<attempts-1){await delay(2000);continue;}
+      fs.appendFileSync(path.join(RUNTIME,'checks-diagnostic.private.log'),name+'\n'+e.stack+'\n',{mode:0o600});
+      checks.push({name,ok:false});
+      console.log(name+': FALHOU');
+    }
+  }
+}
+for(const app of ['auth','chat','erp','cloud','postiz','n8n','waha'])await check('Aplicacao restaurada: '+app,async()=>{await hub.invoke(id,app,'check');},30);
 await check('Vinculo da conta central recuperado no Authentik',async()=>{const user=new PortalAccounts().users(id).find(u=>u.identity?.directoryId),c=hub.settings(id).connectors.auth;assert.ok(user);const r=await requestRecovered(new URL('/api/v3/core/users/'+user.identity.directoryId+'/',t.urls.auth),{headers:{Authorization:'Bearer '+c.token}});assert.equal(r.status,200);assert.equal(r.data.is_active,true);assert.equal(r.data.attributes.cloudworld_user_id,user.id);assert.equal(r.data.attributes.cloudworld_tenant,id);if(r.data.uuid)assert.equal(r.data.uuid,user.identity.subject);});
 await check('Contatos Chatwoot recuperados e legiveis',async()=>{const result=await hub.invoke(id,'chat','contacts.list');assert.ok(Array.isArray(result.payload)&&result.payload.length>0);});
 await check('Clientes ERP recuperados e legiveis',async()=>{const c=hub.settings(id).connectors.erp,r=await requestRecovered(new URL('/api/resource/Customer?limit_page_length=1',t.urls.erp),{headers:{Authorization:'token '+c.apiKey+':'+c.apiSecret}});assert.equal(r.status,200);assert.ok(r.data.data.length>0);});

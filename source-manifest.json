@@ -1,6 +1,7 @@
 {
   "entries": [
     ".gitignore",
+    ".gitattributes",
     "package.json",
     "package-lock.json",
     "source-manifest.json",

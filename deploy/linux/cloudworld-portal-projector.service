@@ -1,0 +1,21 @@
+[Unit]
+Description=CloudWorld portal account projection and identity broker
+After=systemd-tmpfiles-setup.service
+
+[Service]
+User=cloudworld
+Group=cloudworld-portal
+WorkingDirectory=/opt/cloudworld
+Environment=VW_RUNTIME_DIR=/opt/cloudworld/runtime
+ExecStart=/usr/bin/node /opt/cloudworld/scripts/Project-LinuxPortal.mjs
+Restart=on-failure
+RestartSec=2
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cloudworld-portal
+
+[Install]
+WantedBy=multi-user.target

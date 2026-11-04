@@ -1,0 +1,144 @@
+{
+  "at": "2026-11-04T18:33:11.7962142-03:00",
+  "scope": "Laboratório local Windows e Ubuntu WSL, sem servidor ou domínio de produção",
+  "package": {
+    "passed": 98,
+    "sha256": "ce4b68b5d6c59615c2440270ab63f8a716bfb9b8f1ed6e4287da19fb2f6c8670",
+    "cleanDependencyInstall": true,
+    "tests": 98,
+    "version": "1.6.6"
+  },
+  "linuxPortal": {
+    "at": "2026-11-04T21:05:56.639Z",
+    "ok": true,
+    "checks": [
+      {
+        "name": "HTTPS portal and protected anonymous session",
+        "ok": true
+      },
+      {
+        "name": "Untrusted certificate is refused",
+        "ok": true
+      },
+      {
+        "name": "Private administrative routes and cross-origin login are refused",
+        "ok": true
+      },
+      {
+        "name": "Portal identity reaches broker and unknown account is refused",
+        "ok": true
+      },
+      {
+        "name": "Secure login and session across portal restart",
+        "ok": true
+      },
+      {
+        "name": "Expired projection refuses access and projector recovers",
+        "ok": true
+      },
+      {
+        "name": "Suspended user loses existing session",
+        "ok": true
+      }
+    ]
+  },
+  "functionalRecovery": {
+    "initialAttempt": "ERP HTTP 500, credenciais consistentes; repetição após reinício aprovada",
+    "checks": [
+      {
+        "name": "auth-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "chat-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "n8n-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "cloud-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "erp-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "postiz-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "temporal-db: SQL restaurado",
+        "ok": true
+      },
+      {
+        "name": "Workflow n8n recuperado",
+        "ok": true
+      },
+      {
+        "name": "Redes da copia restaurada sao internas",
+        "ok": true
+      },
+      {
+        "name": "Aplicacao restaurada nao alcanca internet ou API original",
+        "ok": true
+      },
+      {
+        "name": "Aplicacao restaurada: auth",
+        "ok": true
+      },
+      {
+        "name": "Aplicacao restaurada: chat",
+        "ok": true
+      },
+      {
+        "name": "Aplicacao restaurada: erp",
+        "ok": true
+      },
+      {
+        "name": "Aplicacao restaurada: cloud",
+        "ok": true
+      },
+      {
+        "name": "Aplicacao restaurada: postiz",
+        "ok": true
+      },
+      {
+        "name": "Aplicacao restaurada: n8n",
+        "ok": true
+      },
+      {
+        "name": "Aplicacao restaurada: waha",
+        "ok": true
+      },
+      {
+        "name": "Vinculo da conta central recuperado no Authentik",
+        "ok": true
+      },
+      {
+        "name": "Contatos Chatwoot recuperados e legiveis",
+        "ok": true
+      },
+      {
+        "name": "Clientes ERP recuperados e legiveis",
+        "ok": true
+      },
+      {
+        "name": "Arquivos Nextcloud recuperados e listaveis",
+        "ok": true
+      },
+      {
+        "name": "Portal autentica usando hash recuperado do backup",
+        "ok": true
+      }
+    ],
+    "volumesPreserved": true,
+    "reusedImport": true,
+    "databaseImport": "Esperas de gravação reduzidas somente nos bancos temporários",
+    "ok": true,
+    "originalResumed": true,
+    "copyStopped": true
+  }
+}
