@@ -7,7 +7,7 @@ if(Test-Path (Join-Path $dest 'runtime')) { throw 'Destino ja possui runtime. At
 New-Item -ItemType Directory -Path $dest -Force | Out-Null
 $filesJson=& node (Join-Path $source 'scripts/List-Distribution.mjs')
 if($LASTEXITCODE -ne 0){throw 'Falha ao validar o manifesto de fontes.'}
-$files=@($filesJson | ConvertFrom-Json)
+$files=ConvertFrom-Json -InputObject ($filesJson -join "`n")
 foreach($name in $files) {
     $target=Join-Path $dest $name
     New-Item -ItemType Directory -Force (Split-Path $target -Parent) | Out-Null

@@ -47,6 +47,10 @@ Restauração de produção é deliberadamente uma operação de manutenção: s
 
 ## Atualização
 
+A publicação dos fontes no Windows usa `scripts/Apply-Update.ps1`. Uma trava exclusiva impede duas publicações simultâneas. Se a instalação das dependências falhar ou o painel atualizado não responder, o script recupera os fontes anteriores, remove os arquivos acrescentados pela tentativa e reinstala as dependências anteriores. Se a recuperação das dependências também falhar, o script informa a pasta de backup e mantém os serviços parados para reparo. Os dados das empresas ficam fora da lista de fontes publicada.
+
+O ensaio `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/Test-SourceUpdate.ps1` verifica a cópia e a recuperação de arquivos em uma pasta descartável no D:. As chamadas de tarefas agendadas, rede e npm são simuladas nesse ensaio. A pasta do teste é removida ao final.
+
 Versões solicitadas ficam em `images.requested.json`; após download, `compose.json` usa digest e `images.lock.json` registra o conjunto. Não atualize automaticamente `latest`. WAHA/WireGuard ainda usam tags móveis antes da primeira ativação e devem ser fixados por digest quando validados.
 
 O painel e `scripts\Update-Client.ps1` fazem backup, salvam Compose anterior, baixam a versão explícita, fixam digest, atualizam juntos os serviços que usavam a mesma imagem e executam smoke. Exemplo de sintaxe (escolha uma versão real homologada):
