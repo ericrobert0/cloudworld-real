@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { RUNTIME, writeJSON } from '../infra.mjs';
 import { tenants } from '../service.mjs';
+import { inspectHttpsTarget } from '../https-check.mjs';
 
 const [id, portalUrl] = process.argv.slice(2);
 const tenant = tenants().find(tenant => tenant.id === id && tenant.sharedIngress);
@@ -14,22 +15,25 @@ const targets = [
   ['sessão do portal sem credencial', portal.origin + '/api/me', [401]],
   ['API administrativa no portal', portal.origin + '/api/v1/tenants/' + id + '/status', [404]],
   ['editor n8n público', tenant.urls.n8n + '/', [404]],
+  ['API administrativa n8n', tenant.urls.n8n + '/rest/settings', [404]],
+  ['webhook de teste n8n', tenant.urls.n8n + '/webhook-test/cloudworld-check', [404]],
   ['disponibilidade n8n', tenant.urls.n8n + '/healthz/readiness', [200]]
 ];
+const privatePaths = {
+  auth: '/api/v3/core/users/me/',
+  chat: '/api/v1/accounts/1/contacts',
+  erp: '/api/resource/Customer',
+  cloud: '/remote.php/dav/files/admin/',
+  postiz: '/api/public/v1/integrations'
+};
+for (const [name, route] of Object.entries(privatePaths)) {
+  targets.push(['dados privados ' + name, tenant.urls[name] + route, [401, 403]]);
+}
 for (const [name, url] of Object.entries(tenant.urls)) {
   if (name !== 'n8n') targets.push([name, url, [200, 301, 302, 303, 307, 308]]);
 }
 
-const checks = await Promise.all(targets.map(async ([name, url, expected]) => {
-  try {
-    if (new URL(url).protocol !== 'https:') throw Error('HTTPS obrigatório');
-    const response = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
-    await response.body?.cancel();
-    return { name, status: response.status, expected, ok: expected.includes(response.status) };
-  } catch (error) {
-    return { name, ok: false, error: error.cause?.code || error.name };
-  }
-}));
+const checks = await Promise.all(targets.map(target => inspectHttpsTarget(target)));
 const report = { tenant: id, at: new Date().toISOString(), ok: checks.every(check => check.ok), checks };
 const file = path.join(RUNTIME, 'reports', 'deployment-https-' + id + '.json');
 fs.mkdirSync(path.dirname(file), { recursive: true });

@@ -45,6 +45,8 @@ Em Linux com Docker, defina `CW_LINUX_EDGE=1` no painel e no terminal que execut
 
 Use `node scripts/Test-LinuxEdgeLab.mjs` para verificar as rotas com duas redes temporárias. Com duas empresas ativas no servidor, rode `node scripts/Check-LinuxEdge.mjs EMPRESA_A EMPRESA_B` e `node scripts/Check-DeploymentHttps.mjs EMPRESA_A https://portal.seudominio`. Esses dois comandos verificam a rede a partir dos containers e as respostas HTTPS, respectivamente.
 
+A checagem HTTPS mantém a validação de certificados, recusa redirecionamentos de login para outro domínio e exige 401 ou 403 nas rotas de dados privados testadas. As rotas do editor, da API administrativa e dos webhooks de teste do n8n devem responder 404. O relatório fica em `runtime/reports/deployment-https-EMPRESA.json`; saída 2 indica pendência. O ensaio usa requisições GET sem credenciais e precisa ser executado no domínio de destino.
+
 ## Funcionamento como serviço no Windows
 
 `scripts\Register-Service.ps1` registra `VlanWorld-Control` no Agendador do Windows. O painel inicia na entrada do usuário e tem até três tentativas de reinício em caso de falha. Logs ficam em `runtime\service.log`. Não armazena senha do Windows e não exige autologin.

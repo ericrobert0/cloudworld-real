@@ -16,6 +16,7 @@
     "distribution.mjs",
     "docker-events.mjs",
     "host-policy.mjs",
+    "https-check.mjs",
     "infra.mjs",
     "integration-archive.mjs",
     "integration.mjs",
